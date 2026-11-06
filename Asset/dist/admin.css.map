@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/admin.css"],
+  "sourcesContent": ["body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif}\n"],
+  "mappings": "AAAA,YAAY,EAAE,YAAY,KAAO,CAAC,SAAS,CAAC,aAAa,CAAC,UAAU",
+  "names": []
+}
