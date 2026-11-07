@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useContext, useMemo, createContext 
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, MotionConfig, useScroll, useTransform, useSpring, useReducedMotion, useMotionValueEvent, useAnimationFrame, useInView, animate, useMotionValue } from 'framer-motion';
-import { MessageCircle, Briefcase, Lightbulb, ClipboardList, Scissors, Palette, Flag, ArrowUpRight, ArrowDown, ArrowRight, Play, X, Menu, Mail, Phone, MapPin, Instagram, Youtube, Download, Pause, Search, Plus, Minus, ChevronLeft, ChevronRight, ExternalLink, Sun, Moon } from 'lucide-react';
+import { MessageCircle, Briefcase, Lightbulb, ClipboardList, Scissors, Palette, Flag, ArrowUpRight, ArrowDown, ArrowRight, Play, X, Menu, Mail, Phone, MapPin, Instagram, Download, Pause, Search, Plus, Minus, ChevronLeft, ChevronRight, ExternalLink, Sun, Moon } from 'lucide-react';
 import brands from './data/brands.json';
 import { supabase } from './supabaseClient';
 import { toHtml, summaryOf } from './experience.js';
@@ -200,12 +200,7 @@ function Hero({ onProject, featured, settings }) {
     return () => { c1.stop(); };
   }, [enabled]);
   const copyY = useTransform(scrollYProgress, [0, 1], [0, -55]);
-  return <section id="home" className="hero" ref={ref} onMouseMove={e => {
-    const img = e.currentTarget.querySelector('.hero-portrait img'); if (!img) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
-    img.style.setProperty('--ry', `${x * 14}deg`); img.style.setProperty('--rx', `${-y * 8}deg`);
-  }} onMouseLeave={e => { const img = e.currentTarget.querySelector('.hero-portrait img'); if (img) { img.style.setProperty('--ry', '0deg'); img.style.setProperty('--rx', '0deg'); } }}>
+  return <section id="home" className="hero" ref={ref}>
     <div className="hero-top"><span>{settings.hero_topline}<br/><span className="muted">{settings.hero_subtitle}</span></span></div>
     <motion.div className="hero-title display" aria-hidden="true" style={enabled ? { y: titleY } : {}}><SplitText text="Portfolio" delay={0.1} stagger={0.05} rise={50} rotate={6} blur={10} duration={0.9} shine/></motion.div>
     <motion.div className="hero-portrait" style={enabled ? { y: portraitCombinedY, scale: portraitScale } : {}}>{settings.portrait_url && <img src={settings.portrait_url} alt="Portrait of Azizi" width="1024" height="1536" fetchPriority="high" />}</motion.div>
@@ -216,7 +211,7 @@ function Hero({ onProject, featured, settings }) {
     </motion.div>
     <motion.div className="hero-side" initial={enabled ? { opacity: 0, x: 30 } : false} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1, delay: 0.55, ease: EASE }}>
       
-      <div className="hero-stats">{[[2, 'Years in creative industry', true], [20, 'Creative projects', true], [10, 'Achievements', true]].map(([n, label], i) => <div key={label}><span className="display"><CountUp to={n} delay={0.2 + i * 0.15}/><span>+</span></span><p>{label}</p></div>)}<div><span className="display stat-global">Global</span><p>International clients</p></div>{settings.cv_url && <a href={settings.cv_url} target="_blank" rel="noopener noreferrer"><Download size={16}/><span>View resume</span></a>}</div>
+      <div className="hero-stats">{[[2, 'Years in creative industry', true], [20, 'Creative projects', true], [10, 'Achievements', true]].map(([n, label], i) => <div key={label}><span className="display"><CountUp to={n} delay={0.2 + i * 0.15}/><span>+</span></span><p>{label}</p></div>)}<div><span className="display stat-global">Global</span><p>International clients</p></div></div>
     </motion.div>
     <div className="hero-bottom"><span className="hero-scroll">Scroll to explore <ArrowDown size={13}/></span></div>
   </section>;
@@ -452,11 +447,11 @@ function Journey({ onProject, experiences, certificates, settings }) {
   const education = settings.education || [];
   const skills = settings.skills || [];
   return <section id="experience" className="journey section-wrap">
-    <Reveal className="section-heading"><div><span className="eyebrow">Journey</span><WipeReveal as="h2">Always moving. Always creating<span className="accent">.</span></WipeReveal></div>{settings.cv_url && <a className="text-link" href={settings.cv_url} target="_blank" rel="noopener noreferrer">View resume<Download size={16}/></a>}</Reveal>
+    <Reveal className="section-heading"><div><span className="eyebrow">Journey</span><WipeReveal as="h2">Always moving. Always creating<span className="accent">.</span></WipeReveal></div></Reveal>
     <div className="journey-grid"><Reveal className="education-panel"><h3 className="panel-heading">Education & skills</h3><p className="eyebrow accent">Education</p>{education.map((e, i) => <div className="education-row" key={e.title + i}><strong>{e.title}</strong>{e.meta && <span>{e.meta}</span>}<p>{e.text}</p></div>)}<p className="eyebrow accent skills-heading">Creative toolkit</p><div className="skill-tags">{skills.map(s => <span key={s}>{s}</span>)}</div></Reveal>
     <div className="experience-list">
       <div className="exp-list-head"><h3 className="panel-heading">Experience</h3><button className="exp-more" onClick={() => setDetails(true)}>View details<ChevronRight size={16}/></button></div>
-      {experiences.map((job, i) => <Reveal className="experience-row exp-static" key={job.id || job.title} delay={i * 0.04}><span className="experience-date">{dateEn(job.date_label)}</span><div><h3>{job.title}</h3><span className="experience-place">{job.place}</span>{job.description && <p className="exp-short">{shortOf(job.description)}</p>}</div></Reveal>)}
+      {experiences.slice(0, 3).map((job, i) => <Reveal className="experience-row exp-static" key={job.id || job.title} delay={i * 0.04}><span className="experience-date">{dateEn(job.date_label)}</span><div><h3>{job.title}</h3><span className="experience-place">{job.place}</span>{job.description && <p className="exp-short">{shortOf(job.description)}</p>}</div></Reveal>)}
     </div></div>
     <AnimatePresence>{details && <ExperienceModal experiences={experiences} onClose={() => setDetails(false)}/>}</AnimatePresence>
   </section>;
@@ -472,7 +467,7 @@ function Contact({ onProject, featured, settings }) {
     setSent(true);
   };
   return <section id="contact" className="contact section-wrap">
-    <div className="contact-grid"><Reveal className="contact-intro"><span className="eyebrow">Contact</span><WipeReveal as="h2" className="display">Let’s work<br/>together<span className="accent">.</span></WipeReveal><p>Have a story to tell?<br/>Let’s make something worth watching.</p><div className="contact-actions"><Magnetic href={`https://wa.me/${settings.contact_whatsapp}`} target="_blank" rel="noopener noreferrer" className="contact-cta contact-btn"><span className="round-arrow"><ArrowUpRight size={21}/></span>Start a conversation</Magnetic><a className="contact-secondary contact-btn" href={`mailto:${settings.contact_email}`}>Send an email</a></div></Reveal>
+    <div className="contact-grid"><Reveal className="contact-intro"><span className="eyebrow">Contact</span><WipeReveal as="h2" className="display">Let’s work<br/>together<span className="accent">.</span></WipeReveal><p>Have a story to tell?<br/>Let’s make something worth watching.</p><div className="contact-actions"><Magnetic href={`https://wa.me/${settings.contact_whatsapp}`} target="_blank" rel="noopener noreferrer" className="contact-cta contact-btn"><span className="round-arrow"><ArrowUpRight size={21}/></span>Start a conversation</Magnetic><a className="contact-secondary contact-btn" href={`mailto:${settings.contact_email}`}>Send an email</a>{settings.cv_url && <a className="contact-resume contact-btn" href={settings.cv_url} target="_blank" rel="noopener noreferrer"><Download size={18}/>View resume</a>}</div></Reveal>
     <Reveal className="contact-links" delay={0.1}><a href={`mailto:${settings.contact_email}`}><Mail/><span><small>Email</small>{settings.contact_email}</span><ArrowUpRight size={16}/></a><a href={settings.contact_instagram_url} target="_blank" rel="noopener noreferrer"><Instagram/><span><small>Instagram</small>{settings.contact_instagram_handle}</span><ArrowUpRight size={16}/></a><a href={`tel:+${settings.contact_whatsapp}`}><Phone/><span><small>Phone / WhatsApp</small>{settings.contact_phone_display}</span><ArrowUpRight size={16}/></a><div><MapPin/><span><small>Based in</small>{(/^indramayu/i.test(settings.contact_location || '') ? (settings.hero_location || '') : (settings.contact_location || settings.hero_location || '')).replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '').trim().replace(/(^|[\s,])([A-Za-z])([A-Za-z]*)/g, (m, sp, f, r) => sp + f.toUpperCase() + r.toLowerCase())}</span></div></Reveal>
 </div>
     <Reveal><details className="project-brief"><summary><span className="brief-icon"><MessageCircle size={22}/></span><span className="brief-text"><b>Tell me about your project</b><small>Share your idea, needs, and timeline. It opens as a draft in WhatsApp.</small></span><span className="brief-chips" aria-hidden="true"><i>Film</i><i>Commercial</i><i>Collab</i></span><Plus size={19}/></summary><form onSubmit={send}><label>Your name<input name="name" required placeholder="Name or brand" autoComplete="name" maxLength="100"/></label><label>Project type<select name="type"><option>Film & Video Editing</option><option>Commercial Content</option><option>Other collaboration</option></select></label><label className="brief-message">About the project<textarea name="message" required rows="3" placeholder="Share your idea, needs, and rough timeline…" maxLength="3000"/></label><button className="solid-button" type="submit">Continue on WhatsApp <ArrowUpRight size={18}/></button><p className="form-note" role="status">{sent ? 'Message drafted in WhatsApp. Press Send there to start the conversation.' : 'Your brief opens as a draft message in WhatsApp.'}</p></form></details></Reveal>
@@ -686,7 +681,6 @@ function App() {
         <a className="wordmark" href="#home">Azizi</a>
         <span>© {new Date().getFullYear()} Azizi. Every frame has a purpose.</span>
         <div>
-          <a href="https://www.youtube.com/@DuingZStudio" target="_blank" rel="noopener noreferrer" aria-label="YouTube DuingZ Studio"><Youtube size={17}/></a>
           <a href={settings.contact_instagram_url} target="_blank" rel="noopener noreferrer" aria-label={`Instagram ${settings.contact_instagram_handle}`}><Instagram size={17}/></a>
           <a href="#home" aria-label="Kembali ke atas"><ArrowUpRight size={18}/></a>
         </div>

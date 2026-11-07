@@ -685,3 +685,57 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
   :root:root:root body .brief-text b{font-size:17px}
   :root:root:root body .brief-text small{font-size:13px}
 }
+
+/* View resume di baris tombol kontak */
+:root:root:root body .contact-actions .contact-resume{padding:0 26px;color:#fff;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4);text-decoration:none;transition:background .2s,transform .25s cubic-bezier(.3,1.5,.5,1)}
+:root:root:root body .contact-actions .contact-resume:hover{background:rgba(255,255,255,.24);transform:translateY(-2px)}
+:root:root:root body .contact-actions .contact-secondary{color:#fff}
+
+/* Journey: Experience & Education sejajar (tinggi sama, judul segaris) */
+@media(min-width:801px){
+  :root:root:root body .journey-grid{align-items:stretch}
+  :root:root:root body .journey-grid .education-panel{align-self:start;padding-top:24px;padding-bottom:28px}
+  :root:root:root body .journey-grid .education-panel .panel-heading{min-height:38px;display:flex;align-items:center;margin:0 0 8px;font-size:22px}
+  :root:root:root body .journey-grid .exp-list-head{min-height:38px;padding:0 0 8px;box-sizing:content-box}
+  :root:root:root body .journey-grid .experience-list{padding-top:24px;padding-bottom:6px}
+}
+
+/* tiga tombol kontak satu baris */
+@media(min-width:901px){
+  :root:root:root body .contact-grid{grid-template-columns:1.25fr 1fr}
+  :root:root:root body .contact-actions{flex-wrap:nowrap;gap:10px}
+  :root:root:root body .contact-actions .contact-btn{white-space:nowrap;font-size:14px;flex:none}
+  :root:root:root body .contact-actions .contact-cta{padding:0 22px 0 8px}
+  :root:root:root body .contact-actions .contact-secondary,:root:root:root body .contact-actions .contact-resume{padding:0 22px}
+}
+
+/* Experience ringkas: 3 baris, 1 baris deskripsi → tinggi mendekati Education */
+@media(min-width:801px){
+  :root:root:root body .journey-grid .exp-short{-webkit-line-clamp:1}
+  :root:root:root body .journey-grid .experience-row.exp-static{padding:20px 0}
+  :root:root:root body .journey-grid .education-panel{align-self:stretch;display:flex;flex-direction:column;justify-content:space-between}
+}
+
+/* Dark mode: foto menyatu dengan latar (cahaya biru lembut di belakang, tidak terlalu terang) */
+[data-theme="dark"] body .hero-portrait::before{content:"";position:absolute;left:50%;top:48%;width:92%;height:88%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side,rgba(10,132,255,.38),rgba(80,90,240,.16) 55%,transparent 78%);filter:blur(30px);z-index:-1;pointer-events:none}
+[data-theme="dark"] body .hero-portrait img{filter:brightness(.92) contrast(1.03) saturate(1.04) drop-shadow(0 0 1px rgba(10,132,255,.55)) drop-shadow(0 26px 40px rgba(0,0,0,.55))!important}
+
+/* warna tombol kontak dibedakan */
+:root:root:root body .contact-actions .contact-secondary{background:rgba(6,18,70,.38);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.25);color:#fff}
+:root:root:root body .contact-actions .contact-secondary:hover{background:rgba(6,18,70,.55)}
+:root:root:root body .contact-actions .contact-resume{background:linear-gradient(135deg,#9be7ff,#5ac8fa);box-shadow:0 10px 24px -10px rgba(0,200,255,.7);color:#05306b}
+:root:root:root body .contact-actions .contact-resume:hover{background:linear-gradient(135deg,#b4eeff,#6fd2ff)}
+
+/* Fix: logo bergetar saat di-hover (pseudo shine & rotate memicu overflow/hover loop) */
+:root:root:root body .clients-row{overflow:hidden}
+:root:root:root body .client-logo::after,:root:root:root body .client-logo img{pointer-events:none}
+:root:root:root body .clients-row li:last-child .client-logo{overflow:hidden}
+:root:root:root body .clients-row li{padding:6px 0;cursor:default}
+:root:root:root body .clients-row li:hover .client-logo{transform:translateY(-3px) scale(1.05);will-change:transform;backface-visibility:hidden}
+
+/* foto hero: tanpa efek miring saat kursor lewat */
+:root:root:root body .hero-portrait img{transform:scale(var(--zoom,1.25))!important;transition:none}
+
+/* Motion off: "Portfolio" tetap tampil (tanpa span per huruf, teks transparan jadi hilang) */
+html[data-motion=off] .hero-title{background-image:linear-gradient(180deg,#0a84ff 0%,rgba(10,132,255,.6) 60%,rgba(0,194,255,.3) 100%);-webkit-background-clip:text;background-clip:text}
+html[data-motion=off][data-theme="dark"] .hero-title{background-image:linear-gradient(180deg,#4aa3ff 0%,rgba(74,163,255,.5) 60%,rgba(51,201,255,.25) 100%)}
