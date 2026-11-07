@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Film, User, BookOpen, Briefcase, Trophy, LogOut, Plus, Pencil, Trash2, X, Loader2, Search, ChevronDown, Clapperboard, Megaphone, Menu, Upload, FileText, Phone } from 'lucide-react';
+import { Film, User, BookOpen, Briefcase, Trophy, LogOut, Plus, Pencil, Trash2, X, Loader2, Search, ChevronDown, Clapperboard, Megaphone, Menu, Upload, FileText, Phone, ChevronUp, Wrench, ListOrdered, Building2 } from 'lucide-react';
+import { DEFAULT_TOOLS, DEFAULT_STEPS, DEFAULT_CLIENTS } from './toolkit.js';
+import { DEFAULT_TEXTS, TEXT_GROUPS } from './siteTexts.js';
 import { supabase } from './supabaseClient';
 import './admin.css';
 import { toHtml, sanitizeHtml } from './experience.js';
@@ -130,33 +132,22 @@ function ProfilPage() {
   const onSave = async () => {
     setSaving(true); setError(''); setSaved(false);
     const { error } = await save({
-      hero_topline: form.hero_topline, hero_subtitle: form.hero_subtitle,
       hero_role_line1: form.hero_role_line1, hero_role_line2: form.hero_role_line2,
       hero_description: form.hero_description, hero_location: form.hero_location,
-      stat_years: form.stat_years, stat_years_label: form.stat_years_label,
-      stat_projects: form.stat_projects, stat_projects_label: form.stat_projects_label,
-      stat_awards: form.stat_awards, cv_url: form.cv_url, intro_text: form.intro_text, portrait_url: form.portrait_url,
+      cv_url: form.cv_url, portrait_url: form.portrait_url,
     });
     setSaving(false);
     if (error) setError(error.message); else setSaved(true);
   };
   return <div>
-    <PageHeader title="Profil & Hero" subtitle="Teks dan angka yang tampil di section pembuka situs."/>
+    <PageHeader title="Profil & Hero" subtitle="Foto, role, deskripsi, lokasi, dan CV di section pembuka. Sapaan, nama, dan kartu statistik ada di menu “Teks Situs”."/>
     <div className={`${card} grid grid-cols-1 sm:grid-cols-2 gap-5`}>
-      <label className={label}>Topline (atas judul besar)<input className={input} value={form.hero_topline || ''} onChange={e => set('hero_topline', e.target.value)}/></label>
-      <label className={label}>Subtitle topline<input className={input} value={form.hero_subtitle || ''} onChange={e => set('hero_subtitle', e.target.value)}/></label>
       <label className={label}>Role baris 1<input className={input} value={form.hero_role_line1 || ''} onChange={e => set('hero_role_line1', e.target.value)}/></label>
       <label className={label}>Role baris 2<input className={input} value={form.hero_role_line2 || ''} onChange={e => set('hero_role_line2', e.target.value)}/></label>
       <label className={`${label} sm:col-span-2`}>Deskripsi Hero<textarea className={input} rows="2" value={form.hero_description || ''} onChange={e => set('hero_description', e.target.value)}/></label>
       <label className={label}>Lokasi<input className={input} value={form.hero_location || ''} onChange={e => set('hero_location', e.target.value)}/></label>
       <UploadField label="Foto Portrait (Hero)" value={form.portrait_url} onChange={v => set('portrait_url', v)} accept="image/*" placeholder="Upload foto baru" wide/>
       <UploadField label="CV" value={form.cv_url} onChange={v => set('cv_url', v)} accept="application/pdf" placeholder="Upload file PDF, atau paste link Google Drive" wide/>
-      <label className={label}>Angka tahun<input className={input} value={form.stat_years || ''} onChange={e => set('stat_years', e.target.value)}/></label>
-      <label className={label}>Label angka tahun<input className={input} value={form.stat_years_label || ''} onChange={e => set('stat_years_label', e.target.value)}/></label>
-      <label className={label}>Angka proyek<input className={input} value={form.stat_projects || ''} onChange={e => set('stat_projects', e.target.value)}/></label>
-      <label className={label}>Label angka proyek<input className={input} value={form.stat_projects_label || ''} onChange={e => set('stat_projects_label', e.target.value)}/></label>
-      <label className={label}>Angka awards<input className={input} value={form.stat_awards || ''} onChange={e => set('stat_awards', e.target.value)}/></label>
-      <label className={`${label} sm:col-span-2`}>Teks section "Perkenalan Singkat"<textarea className={input} rows="3" value={form.intro_text || ''} onChange={e => set('intro_text', e.target.value)}/></label>
     </div>
     <SaveBar saving={saving} saved={saved} error={error} onSave={onSave}/>
   </div>;
@@ -170,6 +161,7 @@ function TentangPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [confirmNode, ask] = useConfirm();
   useEffect(() => {
     if (settings) {
       setBio(settings.about_bio || '');
@@ -180,17 +172,29 @@ function TentangPage() {
   if (loading) return <p className="text-slate-500">Memuat…</p>;
   const setEdu = (i, k, v) => { setEducation(list => list.map((e, idx) => idx === i ? { ...e, [k]: v } : e)); setSaved(false); };
   const addEdu = () => setEducation(list => [...list, { title: '', meta: '', text: '' }]);
-  const removeEdu = i => setEducation(list => list.filter((_, idx) => idx !== i));
+  const removeEdu = async i => {
+    const row = education[i];
+    const name = (row.title || '').trim() || 'baris kosong ini';
+    const yes = await ask({ title: 'Hapus baris pendidikan?', message: `“${name}” akan dihapus permanen dari database dan hilang dari situs. Tindakan ini tidak bisa dibatalkan.` });
+    if (!yes) return;
+    const next = education.filter((_, idx) => idx !== i);
+    setEducation(next);
+    if (!(row.title || row.meta || row.text)) return; // baris kosong yang belum pernah disimpan
+    setSaving(true); setError('');
+    const { error } = await save({ skills: skills.split(',').map(x => x.trim()).filter(Boolean), education: next.filter(e => (e.title || '').trim()) });
+    setSaving(false);
+    if (error) { setError(error.message); await ask({ info: true, title: 'Gagal menghapus', message: error.message }); } else setSaved(true);
+  };
   const onSave = async () => {
     setSaving(true); setError(''); setSaved(false);
-    const { error } = await save({ about_bio: bio, skills: skills.split(',').map(s => s.trim()).filter(Boolean), education });
+    const { error } = await save({ skills: skills.split(',').map(s => s.trim()).filter(Boolean), education });
     setSaving(false);
     if (error) setError(error.message); else setSaved(true);
   };
   return <div>
-    <PageHeader title="Tentang Saya" subtitle="Bio, pendidikan, dan skill tags di section About."/>
+    <PageHeader title="Pendidikan & Skill" subtitle="Kartu “Education & skills” di section Journey: skill tags dan riwayat pendidikan. Menghapus baris langsung tersimpan; perubahan lain disimpan dengan tombol Simpan."/>
+    {confirmNode}
     <div className={`${card} flex flex-col gap-5 mb-5`}>
-      <label className={label}>Bio singkat<textarea className={input} rows="3" value={bio} onChange={e => { setBio(e.target.value); setSaved(false); }}/></label>
       <label className={label}>Skill tags (pisah pakai koma)<input className={input} value={skills} onChange={e => { setSkills(e.target.value); setSaved(false); }} placeholder="Video Editing, Color Grading, Storytelling"/></label>
     </div>
     <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Pendidikan</h3>
@@ -209,37 +213,89 @@ function TentangPage() {
   </div>;
 }
 
-function ListCRUD({ table, title, fields, renderSummary, renderMeta, emptyItem, orderBy = 'sort_order', onChanged }) {
+// Dialog konfirmasi / pemberitahuan di dalam halaman (tidak memakai confirm bawaan browser yang bisa diblokir)
+function useConfirm() {
+  const [dlg, setDlg] = useState(null);
+  const ask = opts => new Promise(resolve => setDlg({ ...opts, resolve }));
+  const close = v => { dlg?.resolve(v); setDlg(null); };
+  const node = dlg ? <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm" onClick={() => close(false)}>
+    <div role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="mb-3 flex items-start gap-3">
+        <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${dlg.info ? 'bg-amber-100 text-amber-600' : 'bg-rose-100 text-rose-600'}`}>{dlg.info ? <X size={18}/> : <Trash2 size={18}/>}</span>
+        <div><h4 className="text-base font-bold text-slate-900">{dlg.title}</h4><p className="mt-1 text-sm text-slate-500">{dlg.message}</p></div>
+      </div>
+      <div className="mt-5 flex justify-end gap-2">
+        {!dlg.info && <button autoFocus className={btnGhost} onClick={() => close(false)}>Batal</button>}
+        <button autoFocus={!!dlg.info} className={dlg.info ? btnPrimary : 'inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 transition'} onClick={() => close(true)}>{dlg.info ? 'Mengerti' : (dlg.confirmLabel || 'Ya, hapus')}</button>
+      </div>
+    </div>
+  </div> : null;
+  return [node, ask];
+}
+
+function ListCRUD({ table, title, fields, renderSummary, renderMeta, renderThumb, emptyItem, orderBy = 'sort_order', onChanged, reorder, seed, setupSql }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
+  const [loadError, setLoadError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [confirmNode, ask] = useConfirm();
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase.from(table).select('*').order(orderBy, { ascending: true });
-    if (!error) setItems(data || []);
+    if (!error) { setItems(data || []); setLoadError(''); } else setLoadError(error.message);
     setLoading(false);
     onChanged && onChanged();
   };
   useEffect(() => { load(); }, []);
-  const remove = async id => {
-    if (!window.confirm('Hapus item ini?')) return;
-    await supabase.from(table).delete().eq('id', id);
+  const nextOrder = items.length ? Math.max(...items.map(i => i.sort_order || 0)) + 1 : 0;
+  const move = async (i, d) => {
+    const a = items[i], b = items[i + d]; if (!a || !b) return;
+    setBusy(true);
+    const ao = a.sort_order ?? i, bo = b.sort_order ?? (i + d);
+    const [sa, sb] = ao === bo ? [i + d, i] : [bo, ao];
+    await supabase.from(table).update({ sort_order: sa }).eq('id', a.id);
+    await supabase.from(table).update({ sort_order: sb }).eq('id', b.id);
+    setBusy(false); load();
+  };
+  const seedNow = async () => {
+    setBusy(true);
+    const { error } = await supabase.from(table).insert(seed.map((r, i) => ({ ...r, sort_order: i })));
+    setBusy(false);
+    if (error) window.alert(error.message); else load();
+  };
+  const remove = async item => {
+    const name = (renderSummary && renderSummary(item)) || 'item ini';
+    const yes = await ask({ title: 'Hapus data ini?', message: `“${String(name).slice(0, 90)}” akan dihapus permanen dari database dan hilang dari situs. Tindakan ini tidak bisa dibatalkan.` });
+    if (!yes) return;
+    const { data, error } = await supabase.from(table).delete().eq('id', item.id).select('id');
+    if (error) { await ask({ info: true, title: 'Gagal menghapus', message: error.message }); return; }
+    if (!data || data.length === 0) { await ask({ info: true, title: 'Tidak bisa dihapus', message: 'Database menolak penghapusan (izin hapus untuk tabel ini belum ada). Jalankan “npm run db:migrate” di terminal, lalu coba lagi.' }); return; }
     load();
   };
+  if (loadError && setupSql) return <div className={`${card} border-amber-300 bg-amber-50`}>
+    <p className="mb-1 text-sm font-semibold text-amber-900">Tabel “{table}” belum dibuat di Supabase</p>
+    <p className="mb-3 text-xs text-amber-800">Buka Supabase → SQL Editor, tempel SQL di bawah, klik Run, lalu muat ulang halaman ini. Cukup dilakukan sekali.</p>
+    <pre className="max-h-56 overflow-auto rounded-lg bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-100 whitespace-pre-wrap">{setupSql}</pre>
+    <div className="mt-3 flex gap-2"><button className={btnPrimary} onClick={() => { try { navigator.clipboard.writeText(setupSql); } catch {} }}>Salin SQL</button><button className={btnGhost} onClick={load}>Saya sudah menjalankannya, muat ulang</button></div>
+  </div>;
   return <div>
     <div className="mb-4 flex items-center justify-between">
       <h3 className="text-lg font-bold text-slate-900">{title} <span className="text-slate-400 font-normal">({items.length})</span></h3>
       <button onClick={() => setEditing(editing === 'new' ? null : 'new')} className={btnPrimary}>{editing === 'new' ? <X size={15}/> : <Plus size={15}/>}{editing === 'new' ? 'Batal' : 'Tambah'}</button>
     </div>
-    {editing === 'new' && <ItemForm table={table} fields={fields} emptyItem={emptyItem} onDone={() => { setEditing(null); load(); }}/>}
+    {confirmNode}
+    {editing === 'new' && <ItemForm table={table} fields={fields} emptyItem={emptyItem} extra={reorder ? { sort_order: nextOrder } : undefined} onDone={() => { setEditing(null); load(); }}/>}
     {typeof editing === 'object' && editing && <ItemForm table={table} fields={fields} initial={editing} emptyItem={emptyItem} onDone={() => { setEditing(null); load(); }}/>}
     {!editing && (loading ? <p className="text-slate-500">Memuat…</p> : <div className="flex flex-col gap-2">
-      {items.length === 0 && <p className="text-sm text-slate-400">Belum ada data.</p>}
-      {items.map(item => <div key={item.id} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
-        <div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{renderSummary(item)}</p>{renderMeta && <p className="text-xs text-slate-400">{renderMeta(item)}</p>}</div>
+      {items.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 bg-white p-5 text-center"><p className="text-sm text-slate-500">Belum ada data.</p>{seed && <button className={`${btnPrimary} mt-3`} disabled={busy} onClick={seedNow}>{busy && <Loader2 size={15} className="animate-spin"/>}Isi dengan data awal situs</button>}</div>}
+      {items.map((item, idx) => <div key={item.id} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+        {reorder && <div className="flex flex-shrink-0 flex-col"><button disabled={busy || idx === 0} onClick={() => move(idx, -1)} className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-25" aria-label="Naik"><ChevronUp size={16}/></button><button disabled={busy || idx === items.length - 1} onClick={() => move(idx, 1)} className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-25" aria-label="Turun"><ChevronDown size={16}/></button></div>}
+        {renderThumb && renderThumb(item)}
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-800">{renderSummary(item)}</p>{renderMeta && <p className="text-xs text-slate-400">{renderMeta(item)}</p>}</div>
         <div className="flex flex-shrink-0 gap-2">
           <button onClick={() => setEditing(item)} className={btnIcon}><Pencil size={13}/>Edit</button>
-          <button onClick={() => remove(item.id)} className={btnDanger}><Trash2 size={13}/>Hapus</button>
+          <button onClick={() => remove(item)} className={btnDanger}><Trash2 size={13}/>Hapus</button>
         </div>
       </div>)}
     </div>)}
@@ -282,6 +338,29 @@ async function uploadBlob(blob, name) {
   return supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
 }
 
+// Ambil thumbnail otomatis dari link (YouTube langsung; Instagram/TikTok/Vimeo/dll lewat pratinjau link lalu disimpan ke storage supaya tidak kedaluwarsa)
+async function fetchBlob(url) {
+  for (const u of [url, `https://images.weserv.nl/?url=${encodeURIComponent(url.replace(/^https?:\/\//, ''))}&output=jpg&q=88`]) {
+    try { const r = await fetch(u); if (r.ok) { const b = await r.blob(); if (b.type.startsWith('image/') && b.size > 1000) return b; } } catch {}
+  }
+  throw new Error('gagal mengunduh gambar');
+}
+async function autoThumb(link) {
+  const l = (link || '').trim();
+  const yt = l.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/) || (/^[\w-]{11}$/.test(l) ? [0, l] : null);
+  if (yt) return `https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg`;
+  if (!/^https?:\/\//i.test(l)) throw new Error('Tempel link lengkap (https://…) dulu.');
+  if (/instagram\.com/i.test(l)) throw new Error('Instagram memblokir pengambilan otomatis. Kosongkan thumbnail (situs memakai sampul bergaya Instagram), atau upload screenshot postingannya.');
+  let img = '';
+  try {
+    const r = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(l)}`); const j = await r.json();
+    img = j?.data?.image?.url || j?.data?.logo?.url || '';
+  } catch {}
+  if (!img) throw new Error('Link ini tidak menyediakan gambar pratinjau. Upload thumbnail manual.');
+  const blob = await fetchBlob(img);
+  return uploadBlob(blob, 'thumb.jpg');
+}
+
 function captureFrame(src) {
   return new Promise((resolve, reject) => {
     const v = document.createElement('video');
@@ -302,6 +381,7 @@ function captureFrame(src) {
 
 const MEDIA_INFO = {
   youtube: { label: 'Video YouTube', placeholder: 'Tempel link YouTube atau ID videonya', hint: 'Boleh tempel link lengkap, ID-nya diambil otomatis.' },
+  link: { label: 'Link karya (Instagram, TikTok, Vimeo, Facebook, YouTube, dll)', placeholder: 'https://www.instagram.com/reel/…', hint: 'Tempel link apa saja. Instagram, TikTok, Vimeo, Facebook, dan YouTube tampil langsung di situs; link lain dibuka lewat tombol “Open original post”. Thumbnail otomatis untuk YouTube, Vimeo, TikTok, dan website. Untuk Instagram, thumbnail boleh dikosongkan: situs memakai sampul bergaya Instagram (atau upload screenshot).' },
   drive: { label: 'File Google Drive', placeholder: 'ID file Google Drive', hint: 'ID ada di link Drive: …/file/d/ID/view' },
   website: { label: 'Alamat website', placeholder: 'https://…', hint: '' },
 };
@@ -312,7 +392,7 @@ function MediaField({ form, set }) {
   if (t === 'image') return <UploadField label="Upload gambar" value={form.media} onChange={v => set('media', v)} accept="image/*" placeholder="Pilih gambar dari komputer" wide required/>;
   const info = MEDIA_INFO[t] || MEDIA_INFO.youtube;
   return <label className={`${label} sm:col-span-2`}>{info.label}
-    <input className={input} value={form.media || ''} required placeholder={info.placeholder} onChange={e => { const v = t === 'youtube' ? ytId(e.target.value) : e.target.value; set('media', v); if (t === 'youtube' && v.length === 11 && !form.image) set('image', `https://img.youtube.com/vi/${v}/hqdefault.jpg`); }}/>
+    <input className={input} value={form.media || ''} required placeholder={info.placeholder} onBlur={async e => { if (form.image || !['link', 'website'].includes(t)) return; try { set('image', await autoThumb(e.target.value)); } catch {} }} onChange={e => { const v = t === 'youtube' ? ytId(e.target.value) : e.target.value; set('media', v); if (t === 'youtube' && v.length === 11 && !form.image) set('image', `https://img.youtube.com/vi/${v}/hqdefault.jpg`); }}/>
     {info.hint && <span className="text-xs font-normal text-slate-400">{info.hint}</span>}
   </label>;
 }
@@ -322,6 +402,13 @@ function ThumbField({ form, set }) {
   const [err, setErr] = useState('');
   const canVideo = form.type === 'video' && form.media;
   const canYt = form.type === 'youtube' && form.media && form.media.length === 11;
+  const canLink = ['youtube', 'link', 'website'].includes(form.type) && !/instagram\.com/i.test(form.media || '') && /^(https?:\/\/|[\w-]{11}$)/i.test((form.media || '').trim());
+  const fromLink = async () => {
+    setBusy(true); setErr('');
+    try { set('image', await autoThumb(form.media)); }
+    catch (e) { setErr(e.message || 'Gagal mengambil thumbnail.'); }
+    setBusy(false);
+  };
   const fromVideo = async () => {
     setBusy(true); setErr('');
     try { const blob = await captureFrame(form.media); set('image', await uploadBlob(blob, 'thumb.jpg')); }
@@ -329,16 +416,16 @@ function ThumbField({ form, set }) {
     setBusy(false);
   };
   return <div className="sm:col-span-2">
-    <UploadField label="Thumbnail (gambar sampul)" value={form.image} onChange={v => set('image', v)} accept="image/*" placeholder="Upload gambar sampul atau tempel link gambar" wide required/>
-    {(canVideo || canYt) && <div className="mt-2 flex flex-wrap items-center gap-2">
+    <UploadField label="Thumbnail (gambar sampul)" value={form.image} onChange={v => set('image', v)} accept="image/*" placeholder={form.type === 'link' ? 'Opsional: kosongkan untuk memakai sampul otomatis bergaya platform' : 'Upload gambar sampul atau tempel link gambar'} wide required={form.type !== 'link'}/>
+    {(canVideo || canYt || canLink) && <div className="mt-2 flex flex-wrap items-center gap-2">
       {canVideo && <button type="button" onClick={fromVideo} disabled={busy} className={btnGhost}>{busy ? <Loader2 size={14} className="animate-spin"/> : <Film size={14}/>}{busy ? 'Membuat…' : 'Buat thumbnail dari video'}</button>}
-      {canYt && <button type="button" onClick={() => set('image', `https://img.youtube.com/vi/${form.media}/hqdefault.jpg`)} className={btnGhost}><Film size={14}/>Pakai thumbnail YouTube</button>}
+      {canLink && <button type="button" onClick={fromLink} disabled={busy} className={btnGhost}>{busy ? <Loader2 size={14} className="animate-spin"/> : <Film size={14}/>}{busy ? 'Mengambil…' : 'Ambil thumbnail otomatis dari link'}</button>}
       {err && <span className="text-xs text-rose-600">{err}</span>}
     </div>}
   </div>;
 }
 
-function ItemForm({ table, fields, initial, emptyItem, onDone }) {
+function ItemForm({ table, fields, initial, emptyItem, onDone, extra }) {
   const [form, setForm] = useState(initial || emptyItem);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -346,7 +433,7 @@ function ItemForm({ table, fields, initial, emptyItem, onDone }) {
   const submit = async e => {
     e.preventDefault();
     setSaving(true); setError('');
-    const payload = {}; fields.forEach(f => { payload[f.key] = form[f.key]; });
+    const payload = {}; fields.forEach(f => { payload[f.key] = form[f.key]; }); if (!form.id && extra) Object.assign(payload, extra);
     const res = form.id ? await supabase.from(table).update(payload).eq('id', form.id) : await supabase.from(table).insert(payload);
     setSaving(false);
     if (res.error) setError(res.error.message); else onDone();
@@ -389,7 +476,7 @@ function PengalamanPage() {
           <ul className="mt-1 list-disc pl-4 text-xs text-slate-500"><li>Poin pekerjaan (daftar di Deskripsi)</li><li>Bisa juga daftar angka 1. 2. 3.</li></ul>
         </div>
       </div>
-      <p className="mt-4 text-xs text-slate-500">Urutan tampil mengikuti kolom urutan di database (sort_order). Perubahan langsung terlihat setelah halaman situs di-refresh.</p>
+      <p className="mt-4 text-xs text-slate-500">Urutan tampil mengikuti kolom urutan di database (sort_order). Di depan hanya tampil beberapa pengalaman teratas (jumlahnya diatur di menu “Teks Situs”); semuanya ada di “View details”. Perubahan langsung terlihat setelah halaman situs di-refresh.</p>
     </div>
     <ListCRUD table="experience" title="Pengalaman"
       fields={[
@@ -401,6 +488,119 @@ function PengalamanPage() {
       emptyItem={{ date_label: '', title: '', place: '', description: '<p>Ringkasan singkat satu kalimat.</p><ul><li>Poin pekerjaan pertama</li><li>Poin pekerjaan kedua</li></ul>' }}
       renderSummary={e => `${e.title} — ${e.place || ''}`}
       renderMeta={e => e.date_label}/>
+  </div>;
+}
+
+const TOOLKIT_SQL = `-- Jalankan sekali di Supabase → SQL Editor. Membuat tabel Toolkit & Process agar bisa diedit dari admin.
+create table if not exists public.tools (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  icon_url text not null,
+  sort_order int not null default 0,
+  created_at timestamptz default now()
+);
+create table if not exists public.process_steps (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  tags text,
+  sort_order int not null default 0,
+  created_at timestamptz default now()
+);
+
+alter table public.tools enable row level security;
+alter table public.process_steps enable row level security;
+
+drop policy if exists "public read tools" on public.tools;
+drop policy if exists "admin write tools" on public.tools;
+create policy "public read tools" on public.tools for select using (true);
+create policy "admin write tools" on public.tools for all to authenticated using (true) with check (true);
+
+drop policy if exists "public read process_steps" on public.process_steps;
+drop policy if exists "admin write process_steps" on public.process_steps;
+create policy "public read process_steps" on public.process_steps for select using (true);
+create policy "admin write process_steps" on public.process_steps for all to authenticated using (true) with check (true);
+`;
+
+function ToolkitPage() {
+  const { settings, loading, save } = useSiteSettings();
+  const [skills, setSkills] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => { if (settings) setSkills((settings.skills || []).join(', ')); }, [settings]);
+  const onSave = async () => {
+    setSaving(true); setError(''); setSaved(false);
+    const { error } = await save({ skills: skills.split(',').map(s => s.trim()).filter(Boolean) });
+    setSaving(false);
+    if (error) setError(error.message); else setSaved(true);
+  };
+  return <div>
+    <PageHeader title="Toolkit" subtitle="Section “The tools behind the work”: ikon aplikasi dan skill tags."/>
+    <ListCRUD table="tools" title="Aplikasi / tools" reorder seed={DEFAULT_TOOLS} setupSql={TOOLKIT_SQL}
+      fields={[
+        { key: 'name', label: 'Nama tool', required: true, hint: 'Muncul saat ikon di-hover. Contoh: DaVinci Resolve' },
+        { key: 'icon_url', label: 'Ikon (PNG/SVG, rasio kotak)', type: 'upload', required: true, wide: true },
+      ]}
+      emptyItem={{ name: '', icon_url: '' }}
+      renderThumb={t => <img src={t.icon_url} alt="" className="h-11 w-11 flex-shrink-0 rounded-xl border border-slate-200 bg-slate-50 object-contain p-1"/>}
+      renderSummary={t => t.name}
+      renderMeta={() => 'Gunakan tombol ↑ ↓ untuk mengatur urutan'}/>
+    <h3 className="mb-3 mt-8 text-xs font-bold uppercase tracking-wide text-slate-400">Skill tags</h3>
+    <div className={`${card} mb-3`}>
+      <label className={label}>Skill tags (pisah pakai koma)<input className={input} value={skills} onChange={e => { setSkills(e.target.value); setSaved(false); }} placeholder="Video Editing, Color Grading, Storytelling" disabled={loading}/></label>
+    </div>
+    <SaveBar saving={saving} saved={saved} error={error} onSave={onSave}/>
+  </div>;
+}
+
+const CLIENTS_SQL = `-- Jalankan sekali di Supabase → SQL Editor. Membuat tabel logo brand/klien agar bisa diedit dari admin.
+create table if not exists public.clients (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  logo_url text not null,
+  dark_chip text not null default '',
+  sort_order int not null default 0,
+  created_at timestamptz default now()
+);
+
+alter table public.clients enable row level security;
+
+drop policy if exists "public read clients" on public.clients;
+drop policy if exists "admin write clients" on public.clients;
+create policy "public read clients" on public.clients for select using (true);
+create policy "admin write clients" on public.clients for all to authenticated using (true) with check (true);
+`;
+
+function BrandPage() {
+  return <div>
+    <PageHeader title="Brands / Klien" subtitle="Section “Brands I’ve worked with”. Jumlah di label (mis. “5 brands”) dihitung otomatis dari daftar ini."/>
+    <ListCRUD table="clients" title="Brand" reorder seed={DEFAULT_CLIENTS} setupSql={CLIENTS_SQL}
+      fields={[
+        { key: 'name', label: 'Nama brand', required: true, hint: 'Dipakai sebagai teks alternatif dan tooltip logo.' },
+        { key: 'dark_chip', label: 'Logo transparan (tanpa kotak warna)?', type: 'select', options: [['', 'Tidak, logo punya kotak/latar sendiri'], ['light', 'Ya, beri latar terang di mode gelap']], hint: 'Pilih “Ya” untuk logo PNG transparan berwarna gelap agar tetap terbaca di mode gelap.' },
+        { key: 'logo_url', label: 'Logo (PNG/SVG, tinggi seragam lebih bagus)', type: 'upload', required: true, wide: true },
+      ]}
+      emptyItem={{ name: '', logo_url: '', dark_chip: '' }}
+      renderThumb={b => <img src={b.logo_url} alt="" className="h-11 w-20 flex-shrink-0 rounded-lg border border-slate-200 bg-slate-50 object-contain p-1"/>}
+      renderSummary={b => b.name}
+      renderMeta={() => 'Gunakan tombol ↑ ↓ untuk mengatur urutan'}/>
+  </div>;
+}
+
+function ProsesPage() {
+  return <div>
+    <PageHeader title="Process" subtitle="Section “From idea to final frame”. Nomor langkah otomatis mengikuti urutan."/>
+    <ListCRUD table="process_steps" title="Langkah proses" reorder seed={DEFAULT_STEPS} setupSql={TOOLKIT_SQL}
+      fields={[
+        { key: 'title', label: 'Judul langkah', required: true, hint: 'Contoh: Idea, Plan, Craft' },
+        { key: 'tags', label: 'Label kecil (pisah pakai koma)', hint: 'Contoh: Brief, References' },
+        { key: 'description', label: 'Penjelasan', type: 'textarea', rows: 3, required: true, wide: true },
+      ]}
+      emptyItem={{ title: '', tags: '', description: '' }}
+      renderSummary={(st) => st.title}
+      renderMeta={st => `${st.tags || 'tanpa label'} · ${(st.description || '').slice(0, 70)}${(st.description || '').length > 70 ? '…' : ''}`}/>
+    <p className="mt-4 text-xs text-slate-500">Ikon dan warna tiap langkah diatur otomatis sesuai urutan. Disarankan 3–6 langkah supaya tab tetap rapi.</p>
   </div>;
 }
 
@@ -421,13 +621,64 @@ function AwardsPage() {
   </div>;
 }
 
+const TEXTS_SQL = `-- Kolom teks situs (judul section, label tombol, kartu statistik) yang diedit lewat admin → menu "Teks Situs".
+alter table public.site_settings add column if not exists texts jsonb not null default '{}'::jsonb;
+`;
+
+function TeksPage() {
+  const { settings, loading, save } = useSiteSettings();
+  const [f, setF] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => { if (settings) setF({ ...DEFAULT_TEXTS, ...Object.fromEntries(Object.entries(settings.texts || {}).filter(([, v]) => typeof v === 'string' && v.trim())) }); }, [settings]);
+  if (loading) return <p className="text-slate-500">Memuat…</p>;
+  const missingColumn = settings && !('texts' in settings);
+  const set = (k, v) => { setF(c => ({ ...c, [k]: v })); setSaved(false); };
+  const onSave = async () => {
+    setSaving(true); setError(''); setSaved(false);
+    const { error } = await save({ texts: f });
+    setSaving(false);
+    if (error) setError(error.message); else setSaved(true);
+  };
+  const reset = () => { setF({ ...DEFAULT_TEXTS }); setSaved(false); };
+  return <div>
+    <PageHeader title="Teks Situs" subtitle="Judul tiap section, label tombol, dan 4 kartu statistik. Urutan grup sama dengan urutan di situs."/>
+    {missingColumn && <div className={`${card} mb-5 border-amber-300 bg-amber-50`}>
+      <p className="mb-1 text-sm font-semibold text-amber-900">Kolom “texts” belum ada di database</p>
+      <p className="mb-3 text-xs text-amber-800">Jalankan <code>npm run db:migrate</code> di terminal, atau tempel SQL ini di Supabase → SQL Editor lalu Run. Setelah itu muat ulang halaman ini.</p>
+      <pre className="overflow-auto rounded-lg bg-slate-900 p-3 text-[11px] text-slate-100 whitespace-pre-wrap">{TEXTS_SQL}</pre>
+    </div>}
+    {TEXT_GROUPS.map(g => <div key={g.title} className="mb-5">
+      <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">{g.title}</h3>
+      {g.note && <p className="mb-2 text-xs text-slate-500">{g.note}</p>}
+      <div className={`${card} grid grid-cols-1 gap-4 sm:grid-cols-2`}>
+        {g.keys.map(([k, lbl]) => <label key={k} className={label}>{lbl}<input className={input} value={f[k] ?? ''} onChange={e => set(k, e.target.value)} placeholder={DEFAULT_TEXTS[k]}/></label>)}
+      </div>
+    </div>)}
+    <div className="flex flex-wrap items-center gap-3"><SaveBar saving={saving} saved={saved} error={error} onSave={onSave}/><button type="button" className={btnGhost} onClick={reset}>Kembalikan semua ke teks bawaan</button></div>
+  </div>;
+}
+
 function KontakPage() {
   const { settings, loading, save } = useSiteSettings();
   const [f, setF] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-  useEffect(() => { if (settings) setF(settings); }, [settings]);
+  // Nilai lama di database (yang sudah tidak dipakai situs) diganti nilai terbaru agar form = tampilan situs. Tinggal klik Simpan.
+  const CONTACT_NOW = { contact_instagram_handle: '@ceritazizi', contact_instagram_url: 'https://www.instagram.com/ceritazizi/', contact_whatsapp: '6285726073213', contact_phone_display: '+62 857-2607-3213', contact_location: 'Yogyakarta, Indonesia' };
+  const CONTACT_OLD = { contact_instagram_handle: '@dododididaw', contact_instagram_url: 'https://www.instagram.com/dododididaw/', contact_whatsapp: '6287786923444', contact_phone_display: '+62 877-8692-3444' };
+  const [stale, setStale] = useState(false);
+  useEffect(() => {
+    if (!settings) return;
+    const o = { ...settings }; let changed = false;
+    Object.keys(CONTACT_NOW).forEach(k => {
+      const old = !o[k] || o[k] === CONTACT_OLD[k] || (k === 'contact_location' && /^indramayu/i.test(o[k]));
+      if (old) { o[k] = CONTACT_NOW[k]; changed = true; }
+    });
+    setF(o); setStale(changed);
+  }, [settings]);
   const set = (k, v) => { setF(c => ({ ...c, [k]: v })); setSaved(false); };
   const KEYS = ['contact_email', 'contact_instagram_handle', 'contact_instagram_url', 'contact_whatsapp', 'contact_phone_display', 'contact_location'];
   const onSave = async () => {
@@ -441,6 +692,7 @@ function KontakPage() {
   const wa = (f?.contact_whatsapp || '').replace(/[^0-9]/g, '');
   return <div>
     <PageHeader title="Kontak" subtitle="Dipakai di kartu “Let’s work together” dan tombol kontak di situs."/>
+    {stale && !saved && <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"><b>Data di database masih versi lama.</b> Situs sudah menampilkan data terbaru (kolom di bawah sudah diisi sama dengan situs). Klik <b>Simpan Perubahan</b> sekali agar database ikut diperbarui.</div>}
     {loading || !f ? <p className="text-slate-500">Memuat…</p> : <>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className={`${card} lg:col-span-3 grid grid-cols-1 gap-5 sm:grid-cols-2 content-start`}>
@@ -489,6 +741,7 @@ function StatCard({ icon: Icon, label: statLabel, value, tone }) {
 }
 
 function CategoryManager({ onChange }) {
+  const [confirmNode, ask] = useConfirm();
   const [categories, setCategories] = useState([]);
   const [counts, setCounts] = useState({});
   const [name, setName] = useState('');
@@ -514,11 +767,14 @@ function CategoryManager({ onChange }) {
     if (error) setError(error.message); else { setName(''); load(); }
   };
   const remove = async cat => {
-    if (!window.confirm(`Hapus kategori "${cat.name}"? (Karya yang sudah pakai kategori ini TIDAK akan terhapus, cuma kategorinya yang dihapus dari daftar pilihan)`)) return;
-    await supabase.from('categories').delete().eq('id', cat.id);
+    const yes = await ask({ title: `Hapus kategori “${cat.name}”?`, message: 'Karya yang sudah memakai kategori ini TIDAK ikut terhapus. Hanya kategorinya yang dihapus dari daftar pilihan.' });
+    if (!yes) return;
+    const { data, error } = await supabase.from('categories').delete().eq('id', cat.id).select('id');
+    if (error || !data || !data.length) { await ask({ info: true, title: 'Tidak bisa dihapus', message: error ? error.message : 'Database menolak penghapusan (izin hapus belum ada). Jalankan “npm run db:migrate”, lalu coba lagi.' }); return; }
     load();
   };
   return <div className={`${card} mb-6`}>
+    {confirmNode}
     <h3 className="mb-3 text-sm font-bold text-slate-800">Kelola Kategori</h3>
     <div className="mb-4 flex flex-wrap gap-2">
       {categories.map(c => <span key={c.id} className="inline-flex items-center gap-2 rounded-full bg-slate-100 pl-3 pr-1.5 py-1 text-xs font-medium text-slate-600">
@@ -550,7 +806,7 @@ function KaryaPage() {
       fields={[
         { key: 'title', label: 'Judul', required: true },
         { key: 'category', label: 'Kategori', type: 'select', options: categoryNames.length ? categoryNames : ['Film', 'Commercial'], required: true },
-        { key: 'type', label: 'Sumber karya', type: 'select', options: [['youtube', 'YouTube'], ['video', 'Upload video (file sendiri)'], ['drive', 'Google Drive'], ['image', 'Gambar'], ['website', 'Website']], required: true },
+        { key: 'type', label: 'Sumber karya', type: 'select', options: [['youtube', 'YouTube'], ['link', 'Link lain (Instagram, TikTok, Vimeo, dll)'], ['video', 'Upload video (file sendiri)'], ['drive', 'Google Drive'], ['image', 'Gambar'], ['website', 'Website']], required: true },
         { key: 'year', label: 'Tahun' },
         { key: 'role', label: 'Peran' },
         { key: 'media', label: 'Karya', type: 'media', required: true, wide: true },
@@ -564,22 +820,46 @@ function KaryaPage() {
   </div>;
 }
 
+// Urutan menu = urutan section di situs (atas → bawah)
 const NAV = [
-  { group: 'KONTEN UTAMA', items: [
-    ['karya', 'Karya', Film, KaryaPage],
-  ] },
-  { group: 'PROFIL SITUS', items: [
+  { group: '1 · Hero (paling atas)', items: [
     ['profil', 'Profil & Hero', User, ProfilPage],
-    ['tentang', 'Tentang Saya', BookOpen, TentangPage],
-    ['pengalaman', 'Pengalaman', Briefcase, PengalamanPage],
+  ] },
+  { group: '2 · Clients', items: [
+    ['brands', 'Brands / Klien', Building2, BrandPage],
+  ] },
+  { group: '3 · Toolkit & Process', items: [
+    ['toolkit', 'Toolkit (tools & skill)', Wrench, ToolkitPage],
+    ['proses', 'Process (langkah kerja)', ListOrdered, ProsesPage],
+  ] },
+  { group: '4 · Work', items: [
+    ['karya', 'Karya / Portofolio', Film, KaryaPage],
+  ] },
+  { group: '5 · Journey', items: [
+    ['pengalaman', 'Pengalaman (Experience)', Briefcase, PengalamanPage],
+    ['tentang', 'Pendidikan & Skill', BookOpen, TentangPage],
+  ] },
+  { group: '6 · Contact', items: [
     ['kontak', 'Kontak', Phone, KontakPage],
-    ['awards', 'Awards & Sertifikat', Trophy, AwardsPage],
+  ] },
+  { group: 'Teks umum', items: [
+    ['teks', 'Teks Situs (judul & tombol)', FileText, TeksPage],
   ] },
 ];
 const NAV_FLAT = NAV.flatMap(g => g.items);
 
 function Dashboard({ session }) {
-  const [tab, setTab] = useState('karya');
+  const validTabs = NAV_FLAT.map(x => x[0]);
+  const [tab, setTabState] = useState(() => { try { const h = decodeURIComponent(location.hash.replace('#', '')); if (validTabs.includes(h)) return h; const l = localStorage.getItem('admin-tab'); if (validTabs.includes(l)) return l; } catch {} return 'profil'; });
+  const mainRef = useRef(null);
+  useEffect(() => {
+    let y = 0; try { y = Number(sessionStorage.getItem(`admin-scroll-${tab}`)) || 0; } catch {}
+    if (!y) { if (mainRef.current) mainRef.current.scrollTop = 0; return; }
+    const ids = [120, 450, 1000].map(ms => setTimeout(() => { if (mainRef.current) mainRef.current.scrollTop = y; }, ms));
+    return () => ids.forEach(clearTimeout);
+  }, [tab]);
+  const setTab = id => { setTabState(id); try { history.replaceState(null, '', `#${id}`); localStorage.setItem('admin-tab', id); } catch {} };
+  useEffect(() => { const on = () => { const h = location.hash.replace('#', ''); if (validTabs.includes(h)) setTabState(h); }; window.addEventListener('hashchange', on); return () => window.removeEventListener('hashchange', on); }, []);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const active = NAV_FLAT.find(([id]) => id === tab);
   const Page = active[3];
@@ -593,8 +873,8 @@ function Dashboard({ session }) {
           <ChevronDown size={14} className="ml-auto text-slate-400"/></>}
         </button>
         <nav className="flex flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden">
-          {NAV.map(group => <div key={group.group}>
-            {sidebarOpen && <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">{group.group}</p>}
+          {NAV.map((group, gi) => <div key={group.group} className={gi > 0 && !sidebarOpen ? 'mt-1 border-t border-slate-100 pt-2' : ''}>
+            {sidebarOpen && <p className="mb-1.5 mt-1 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">{group.group}</p>}
             <div className="flex flex-col gap-0.5">
               {group.items.map(([id, nlabel, Icon]) => <button key={id} onClick={() => setTab(id)} title={sidebarOpen ? undefined : nlabel} className={`flex items-center gap-3 whitespace-nowrap rounded-lg py-2.5 text-sm font-medium transition ${sidebarOpen ? 'px-3' : 'justify-center px-0'} ${tab === id ? 'bg-brand/10 text-brand' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
                 <Icon size={17} className="flex-shrink-0"/>{sidebarOpen && nlabel}
@@ -620,7 +900,7 @@ function Dashboard({ session }) {
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">{session.user.email?.[0]?.toUpperCase()}</div>
         </div>
       </header>
-      <main className="flex-1 overflow-y-auto px-8 py-8">
+      <main ref={mainRef} onScroll={e => { try { sessionStorage.setItem(`admin-scroll-${tab}`, String(e.currentTarget.scrollTop)); } catch {} }} className="flex-1 overflow-y-auto px-8 py-8">
         <div className="mx-auto max-w-4xl"><Page/></div>
       </main>
     </div>

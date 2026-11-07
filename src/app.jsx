@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef, useContext, useMemo, createContext 
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, MotionConfig, useScroll, useTransform, useSpring, useReducedMotion, useMotionValueEvent, useAnimationFrame, useInView, animate, useMotionValue } from 'framer-motion';
-import { MessageCircle, Briefcase, Lightbulb, ClipboardList, Scissors, Palette, Flag, ArrowUpRight, ArrowDown, ArrowRight, Play, X, Menu, Mail, Phone, MapPin, Instagram, Download, Pause, Search, Plus, Minus, ChevronLeft, ChevronRight, ExternalLink, Sun, Moon } from 'lucide-react';
+import { MessageCircle, Heart, Send, Check, Link2, Briefcase, Lightbulb, ClipboardList, Scissors, Palette, Flag, ArrowUpRight, ArrowDown, ArrowRight, Play, X, Menu, Mail, Phone, MapPin, Instagram, Download, Pause, Search, Plus, Minus, ChevronLeft, ChevronRight, ExternalLink, Sun, Moon } from 'lucide-react';
 import brands from './data/brands.json';
 import { supabase } from './supabaseClient';
 import { toHtml, summaryOf } from './experience.js';
+import { DEFAULT_TOOLS, DEFAULT_STEPS, DEFAULT_CLIENTS, splitTags } from './toolkit.js';
+import { DEFAULT_TEXTS } from './siteTexts.js';
 import './styles.css';
 import './ios.css';
 
@@ -66,6 +68,9 @@ const fixPortrait = u => (u && u.includes('1793960928054-Add_a_subheading-remove
 // Nilai kontak lama di database dipakai-ulang hanya jika belum diubah lewat admin (menu Kontak).
 const LEGACY_CONTACT = { contact_instagram_handle: '@dododididaw', contact_instagram_url: 'https://www.instagram.com/dododididaw/', contact_whatsapp: '6287786923444', contact_phone_display: '+62 877-8692-3444' };
 const freshContact = d => { const o = { ...d }; Object.keys(LEGACY_CONTACT).forEach(k => { if (!o[k] || o[k] === LEGACY_CONTACT[k]) o[k] = DEFAULT_SETTINGS[k]; }); return o; };
+
+const TextsContext = createContext(DEFAULT_TEXTS);
+const useT = () => useContext(TextsContext);
 
 function Reveal({ children, className = '', delay = 0, as = 'div' }) {
   const enabled = useContext(MotionContext);
@@ -186,6 +191,7 @@ function RichText({ text }) {
 }
 
 function Hero({ onProject, featured, settings }) {
+  const T = useT();
   const ref = useRef(null);
   const enabled = useContext(MotionContext);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
@@ -202,18 +208,18 @@ function Hero({ onProject, featured, settings }) {
   const copyY = useTransform(scrollYProgress, [0, 1], [0, -55]);
   return <section id="home" className="hero" ref={ref}>
     <div className="hero-top"><span>{settings.hero_topline}<br/><span className="muted">{settings.hero_subtitle}</span></span></div>
-    <motion.div className="hero-title display" aria-hidden="true" style={enabled ? { y: titleY } : {}}><SplitText text="Portfolio" delay={0.1} stagger={0.05} rise={50} rotate={6} blur={10} duration={0.9} shine/></motion.div>
+    <motion.div className="hero-title display" aria-hidden="true" style={enabled ? { y: titleY } : {}}><SplitText text={T.hero_title_word} delay={0.1} stagger={0.05} rise={50} rotate={6} blur={10} duration={0.9} shine/></motion.div>
     <motion.div className="hero-portrait" style={enabled ? { y: portraitCombinedY, scale: portraitScale } : {}}>{settings.portrait_url && <img src={settings.portrait_url} alt="Portrait of Azizi" width="1024" height="1536" fetchPriority="high" />}</motion.div>
     <motion.div className="hero-intro" style={enabled ? { y: copyY } : {}} initial={enabled ? { opacity: 0, x: -35 } : false} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.9, delay: 0.35, ease: EASE }}>
-      <SplitText as="p" className="handwriting" text="Hi, I’m" delay={0.4} stagger={0.035}/><h1 className="display"><SplitText as="span" text="Azizi" delay={0.65} stagger={0.045}/><motion.span className="name-dot" initial={enabled ? { opacity: 0, y: 26, rotateZ: 10, filter: 'blur(6px)' } : false} animate={{ opacity: 1, y: 0, rotateZ: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, delay: 0.65 + 5 * 0.045, ease: [0.22, 1, 0.36, 1] }}>.</motion.span></h1><p className="hero-role"><span>{settings.hero_role_line1}</span><span>{settings.hero_role_line2}</span></p><p className="hero-description"><RichText text={settings.hero_description}/></p><div className="hero-skills">{(settings.skills || []).map(t => <span key={t}>{t}</span>)}</div>
-      <div className="hero-actions"><Magnetic href="#portfolio" className="primary-link">View work <ArrowDown size={16}/></Magnetic>{settings.cv_url && <a className="secondary-link" href={settings.cv_url} target="_blank" rel="noopener noreferrer">View resume</a>}</div>
+      <SplitText as="p" className="handwriting" text={T.hero_greeting} delay={0.4} stagger={0.035}/><h1 className="display"><SplitText as="span" text={T.hero_name} delay={0.65} stagger={0.045}/><motion.span className="name-dot" initial={enabled ? { opacity: 0, y: 26, rotateZ: 10, filter: 'blur(6px)' } : false} animate={{ opacity: 1, y: 0, rotateZ: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, delay: 0.65 + 5 * 0.045, ease: [0.22, 1, 0.36, 1] }}>.</motion.span></h1><p className="hero-role"><span>{settings.hero_role_line1}</span><span>{settings.hero_role_line2}</span></p><p className="hero-description"><RichText text={settings.hero_description}/></p><div className="hero-skills">{(settings.skills || []).map(t => <span key={t}>{t}</span>)}</div>
+      <div className="hero-actions"><Magnetic href="#portfolio" className="primary-link">{T.hero_cta} <ArrowDown size={16}/></Magnetic>{settings.cv_url && <a className="secondary-link" href={settings.cv_url} target="_blank" rel="noopener noreferrer">{T.resume_label}</a>}</div>
       <span className="hero-location"><MapPin size={12} /> {settings.hero_location}</span>
     </motion.div>
     <motion.div className="hero-side" initial={enabled ? { opacity: 0, x: 30 } : false} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1, delay: 0.55, ease: EASE }}>
       
-      <div className="hero-stats">{[[2, 'Years in creative industry', true], [20, 'Creative projects', true], [10, 'Achievements', true]].map(([n, label], i) => <div key={label}><span className="display"><CountUp to={n} delay={0.2 + i * 0.15}/><span>+</span></span><p>{label}</p></div>)}<div><span className="display stat-global">Global</span><p>International clients</p></div></div>
+      <div className="hero-stats">{[1, 2, 3, 4].map(i => { const v = String(T[`stat${i}_value`] ?? '').trim(); const num = /^\d+$/.test(v); return <div key={i}><span className={`display${num ? '' : ' stat-global'}`}>{num ? <><CountUp to={Number(v)} delay={0.2 + i * 0.15}/><span>+</span></> : v}</span><p>{T[`stat${i}_label`]}</p></div>; })}</div>
     </motion.div>
-    <div className="hero-bottom"><span className="hero-scroll">Scroll to explore <ArrowDown size={13}/></span></div>
+    <div className="hero-bottom"><span className="hero-scroll">{T.hero_scroll} <ArrowDown size={13}/></span></div>
   </section>;
 }
 
@@ -231,11 +237,28 @@ function ProjectCard({ project, index, onOpen }) {
     rotateX.set(((e.clientY - r.top) / r.height - 0.5) * -10);
   };
   const untilt = () => { rotateX.set(0); rotateY.set(0); };
-  const video = ['youtube', 'drive', 'video'].includes(project.type);
+  const video = ['youtube', 'drive', 'video', 'link'].includes(project.type);
   return <motion.article ref={ref} className="project-card" layout initial={enabled ? { opacity: 0, y: 32, scale: 0.96 } : false} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: false, amount: 0.08 }} transition={{ duration: enabled ? 0.6 : 0, delay: (index % 3) * 0.06, ease: EASE }} exit={{ opacity: 0, scale: 0.96 }}>
-    <motion.button className="project-open" style={enabled ? { rotateX, rotateY, transformPerspective: 800 } : {}} onPointerMove={tilt} onPointerLeave={untilt} onClick={() => onOpen(project)} aria-label={`View ${project.title}`}><motion.div className="project-picture" style={enabled ? { y } : {}}><MediaImage src={project.image} alt={project.title}/></motion.div><span className="project-type">{project.type === 'render' ? '3D BREAKDOWN' : video ? 'FILM / VIDEO' : project.type === 'website' ? 'WEBSITE' : 'STILL / IMAGE'}</span><span className="project-hover">{video ? <Play fill="currentColor" size={18}/> : <ArrowUpRight size={22}/>}</span><span className="project-frame" aria-hidden="true" /></motion.button>
+    <motion.button className="project-open" style={enabled ? { rotateX, rotateY, transformPerspective: 800 } : {}} onPointerMove={tilt} onPointerLeave={untilt} onClick={() => onOpen(project)} aria-label={`View ${project.title}`}><motion.div className="project-picture" style={enabled ? { y } : {}}>{project.type === 'link' && !project.image ? <LinkCover url={project.media} title={project.title}/> : <MediaImage src={project.image} alt={project.title}/>}</motion.div><span className="project-type">{project.type === 'render' ? '3D BREAKDOWN' : video ? 'FILM / VIDEO' : project.type === 'website' ? 'WEBSITE' : 'STILL / IMAGE'}</span><span className="project-hover">{video ? <Play fill="currentColor" size={18}/> : <ArrowUpRight size={22}/>}</span><span className="project-frame" aria-hidden="true" /></motion.button>
     <button className="project-caption" onClick={() => onOpen(project)}><span className="project-number display">{String(index + 1).padStart(2, '0')}</span><span><h3>{project.title}</h3><span className="project-category">{project.category}{project.year ? ` / ${project.year}` : ''}</span></span><ArrowUpRight size={20}/></button>
   </motion.article>;
+}
+
+function LinkCover({ url, title }) {
+  const host = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+  const name = /instagram/.test(host) ? 'Instagram' : /tiktok/.test(host) ? 'TikTok' : /vimeo/.test(host) ? 'Vimeo' : /facebook|fb\.watch/.test(host) ? 'Facebook' : /youtu/.test(host) ? 'YouTube' : host || 'Link';
+  const bg = /instagram/.test(host) ? 'linear-gradient(135deg,#feda75,#fa7e1e 28%,#d62976 55%,#962fbf 78%,#4f5bd5)' : /tiktok/.test(host) ? 'linear-gradient(135deg,#0b0b0f,#25f4ee 140%)' : 'linear-gradient(135deg,#0a84ff,#6a5cf0)';
+  return <div className="link-cover" style={{ background: bg }} role="img" aria-label={title}><span className="link-cover-icon">{/instagram/.test(host) ? <Instagram size={34}/> : <Play size={34} fill="currentColor"/>}</span><b>{name}</b><small>{title}</small></div>;
+}
+
+function linkEmbed(url) {
+  const u = (url || '').trim(); let m;
+  if ((m = u.match(/instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/i))) return { src: `https://www.instagram.com/${m[1] === 'reels' ? 'reel' : m[1]}/${m[2]}/embed`, tall: true, name: 'Instagram', kind: m[1] === 'p' ? 'Post' : 'Reel' };
+  if ((m = u.match(/tiktok\.com\/.*?video\/(\d+)/i))) return { src: `https://www.tiktok.com/embed/v2/${m[1]}`, tall: true, name: 'TikTok', kind: 'Video' };
+  if ((m = u.match(/vimeo\.com\/(?:video\/)?(\d+)/i))) return { src: `https://player.vimeo.com/video/${m[1]}`, name: 'Vimeo', kind: 'Video' };
+  if (/facebook\.com|fb\.watch/i.test(u)) return { src: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(u)}&show_text=false`, name: 'Facebook', kind: 'Video' };
+  if ((m = u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/))) return { src: `https://www.youtube-nocookie.com/embed/${m[1]}?autoplay=1&rel=0`, name: 'YouTube', kind: 'Video' };
+  return null;
 }
 
 function BrandStrip() {
@@ -265,18 +288,20 @@ function BrandStrip() {
     </div></Reveal>;
 }
 
-const CLIENTS = [['vizard', 'Vizard', 111], ['agent-opus', 'Agent Opus', 131], ['twizl', 'Twizl', 124], ['cimb-niaga-syariah', 'CIMB Niaga Syariah', 142], ['trends-masterhooks', 'Trends by Masterhooks', 200]];
-function ClientsStrip() {
+function ClientsStrip({ clients }) {
+  const T = useT();
   const enabled = useContext(MotionContext);
+  const CLIENTS = (clients && clients.length ? clients : DEFAULT_CLIENTS).map((c, i) => [c.id || `c${i}`, c.name, c.logo_url, c.dark_chip === 'light']);
   return <section className="clients-section section-wrap" aria-label="Clients">
-    <Reveal className="section-heading"><div><span className="eyebrow">Clients</span><WipeReveal as="h2">Brands I’ve worked with<span className="accent">.</span></WipeReveal></div><span className="clients-count">{CLIENTS.length} brands</span></Reveal>
-    <ul className="clients-row">{CLIENTS.map(([f, n, w], i) => <motion.li key={f} style={{ '--d': `${i * 0.7}s` }} {...(enabled ? { initial: { opacity: 0, y: 30, rotate: -3 }, whileInView: { opacity: 1, y: 0, rotate: 0 }, viewport: { once: true, amount: 0.5 }, transition: { type: 'spring', stiffness: 200, damping: 16, delay: i * 0.1 } } : {})}>
-      <span className="client-logo"><img src={`./Asset/img/clients/${f}.png`} alt={n} title={n} loading="lazy" height="44" width={w}/></span>
+    <Reveal className="section-heading"><div><span className="eyebrow">{T.clients_eyebrow}</span><WipeReveal as="h2">{T.clients_title}<span className="accent">.</span></WipeReveal></div><span className="clients-count">{CLIENTS.length} {CLIENTS.length === 1 ? 'brand' : 'brands'}</span></Reveal>
+    <ul className="clients-row">{CLIENTS.map(([f, n, src, tl], i) => <motion.li key={f} className={tl ? 'tl' : undefined} style={{ '--d': `${i * 0.7}s` }} {...(enabled ? { initial: { opacity: 0, y: 30, rotate: -3 }, whileInView: { opacity: 1, y: 0, rotate: 0 }, viewport: { once: true, amount: 0.5 }, transition: { type: 'spring', stiffness: 200, damping: 16, delay: i * 0.1 } } : {})}>
+      <span className="client-logo"><img src={src} alt={n} title={n} loading="lazy" height="44"/></span>
     </motion.li>)}</ul>
   </section>;
 }
 
 function Portfolio({ onProject, archive, featured, loading, categories }) {
+  const T = useT();
   const [category, setCategory] = useState('All');
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState(false);
@@ -284,7 +309,7 @@ function Portfolio({ onProject, archive, featured, loading, categories }) {
   const results = archive.filter(p => (category === 'All' || p.category === category) && `${p.title} ${p.category} ${p.role}`.toLowerCase().includes(query.toLowerCase()));
   const projects = expanded || category !== 'All' || query ? results.slice(0, limit) : featured;
   return <section id="portfolio" className="portfolio section-wrap">
-    <Reveal className="section-heading"><div><span className="eyebrow">Selected work</span><WipeReveal as="h2">Work that speaks<span className="accent">.</span></WipeReveal></div><button className="text-link" onClick={() => { if (expanded) { setExpanded(false); setCategory('All'); setQuery(''); } else { setExpanded(true); setLimit(9); } }}>{expanded ? 'Selected work' : 'All work'}<ArrowRight size={21}/></button></Reveal>
+    <Reveal className="section-heading"><div><span className="eyebrow">{T.work_eyebrow}</span><WipeReveal as="h2">{T.work_title}<span className="accent">.</span></WipeReveal></div><button className="text-link" onClick={() => { if (expanded) { setExpanded(false); setCategory('All'); setQuery(''); } else { setExpanded(true); setLimit(9); } }}>{expanded ? T.work_eyebrow : T.work_all}<ArrowRight size={21}/></button></Reveal>
     <Reveal className="portfolio-toolbar">
       <div className="filters" role="group" aria-label="Work categories">
         {categories.map(c => <button key={c} className={category === c ? 'selected' : ''} aria-pressed={category === c} onClick={() => { setCategory(c); setExpanded(true); setLimit(9); }}>{c}{c === category && <motion.span className="filter-line" layoutId="filter-line"/>}</button>)}
@@ -298,16 +323,11 @@ function Portfolio({ onProject, archive, featured, loading, categories }) {
   </section>;
 }
 
-const processSteps = [
-  ['01', 'Idea', 'Listening to your story. Defining the message, the visual direction, and the feeling to carry.', ['Brief', 'References']],
-  ['02', 'Plan', 'Developing the concept, references, and a workflow that fits what the production needs.', ['Storyboard', 'Workflow']],
-  ['03', 'Craft', 'Editing, compositing, and visual effects. Shaping every detail into one story.', ['Editing', 'VFX']],
-  ['04', 'Polish', 'Aligning color, rhythm, and sound. Making sure every frame does its job.', ['Color', 'Sound']],
-  ['05', 'Final frame', 'Review together, final touches, then a result ready to meet its audience.', ['Review', 'Delivery']],
-];
-const PROCESS_ICONS = [Lightbulb, ClipboardList, Scissors, Palette, Flag];
+const PROCESS_ICONS = [Lightbulb, ClipboardList, Scissors, Palette, Flag, Search];
 const PROCESS_COLORS = [['#0a84ff', '#2f6bff'], ['#2f6bff', '#5e5ce6'], ['#5e5ce6', '#af52de'], ['#af52de', '#ff2d55'], ['#ff2d55', '#ff9500']];
-function ProcessPanel() {
+function ProcessPanel({ steps }) {
+  const T = useT();
+  const processSteps = useMemo(() => (steps && steps.length ? steps : DEFAULT_STEPS).map((st, i) => [String(i + 1).padStart(2, '0'), st.title, st.description, splitTags(st.tags)]), [steps]);
   const enabled = useContext(MotionContext);
   const ref = useRef(null);
   const inView = useInView(ref, { amount: 0.4 });
@@ -320,14 +340,15 @@ function ProcessPanel() {
     const t = setTimeout(() => setActive(a => (a + 1) % N), DUR);
     return () => clearTimeout(t);
   }, [active, playing, N]);
-  const [num, title, text, tags] = processSteps[active];
-  const [c1, c2] = PROCESS_COLORS[active];
+  const safe = Math.min(active, N - 1);
+  const [num, title, text, tags] = processSteps[safe];
+  const [c1, c2] = PROCESS_COLORS[safe % PROCESS_COLORS.length];
   const go = d => setActive(a => (a + d + N) % N);
-  return <div className="process-panel pp"><Reveal><p className="eyebrow">Process</p><h3 className="panel-heading">From idea to final frame</h3></Reveal>
+  return <div className="process-panel pp"><Reveal><p className="eyebrow">{T.process_eyebrow}</p><h3 className="panel-heading">{T.process_title}</h3></Reveal>
     <div className="pp-wrap" ref={ref} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div className="pp-tabs" role="tablist" aria-label="Process steps">
-        {processSteps.map(([n, t], i) => { const Icon = PROCESS_ICONS[i]; const on = i === active; return <button key={n} role="tab" aria-selected={on} aria-label={`Step ${n}: ${t}`} className={`pp-tab${on ? ' on' : ''}`} onClick={() => setActive(i)}>
-          {on && <motion.span layoutId="pp-pill" className="pp-pill" style={{ background: `linear-gradient(135deg, ${PROCESS_COLORS[i][0]}, ${PROCESS_COLORS[i][1]})` }} transition={{ type: 'spring', stiffness: 380, damping: 30 }}/>}
+        {processSteps.map(([n, t], i) => { const Icon = PROCESS_ICONS[i % PROCESS_ICONS.length]; const on = i === active; return <button key={n} role="tab" aria-selected={on} aria-label={`Step ${n}: ${t}`} className={`pp-tab${on ? ' on' : ''}`} onClick={() => setActive(i)}>
+          {on && <motion.span layoutId="pp-pill" className="pp-pill" style={{ background: `linear-gradient(135deg, ${PROCESS_COLORS[i % PROCESS_COLORS.length][0]}, ${PROCESS_COLORS[i % PROCESS_COLORS.length][1]})` }} transition={{ type: 'spring', stiffness: 380, damping: 30 }}/>}
           <Icon size={16}/><span className="pp-tab-n">{n}</span>
         </button>; })}
       </div>
@@ -389,7 +410,7 @@ function Breakdown() {
   const resize = url => url.replace('/upload/', '/upload/c_scale,w_1200,q_auto,f_auto/');
   return <section className="breakdown section-wrap" ref={ref} aria-labelledby="breakdown-title"><Reveal className="breakdown-copy"><span className="eyebrow">A LOOK UNDER THE SURFACE</span><motion.h2 id="breakdown-title" className="display" style={enabled ? { x: titleX } : {}} initial={enabled ? { clipPath: 'inset(0 0 100% 0)' } : false} whileInView={{ clipPath: 'inset(0 0 0% 0)' }} viewport={{ once: true, amount: 0.5 }} transition={{ duration: enabled ? 0.85 : 0, ease: EASE }}>FROM RAW.<br/><span className="accent">TO REAL.</span></motion.h2><p>Satu scene. Berlapis proses.<br/>Lihat bagaimana sebuah 3D environment berubah dari bentuk dasar menjadi dunia yang hidup.</p><span className="breakdown-credit">CYBERPUNK ENVIRONMENT / 2025<br/>3D ARTIST · LIGHTING · RENDERING</span></Reveal><Reveal className="comparison"><div className="comparison-stage" style={{'--cut': `${enabled || manual ? cut : 50}%`}}><MediaImage src={resize(scene.renders[0].solid)} alt="Cyberpunk environment sebelum material dan pencahayaan"/><div className="comparison-final"><MediaImage src={resize(scene.renders[0].final)} alt="Cyberpunk environment hasil render akhir"/></div><span className="comparison-label raw-label">SOLID VIEW</span><span className="comparison-label final-label">FINAL RENDER</span><div className="comparison-divider"><span><ChevronLeft size={14}/><ChevronRight size={14}/></span></div><input aria-label="Perbandingan sebelum dan sesudah render" aria-valuetext={`${cut}% solid, ${100-cut}% final render`} type="range" min="0" max="100" value={cut} onChange={e => { setManual(true); setCut(Number(e.target.value)); }}/></div><div className="comparison-caption"><span>GESER UNTUK MELIHAT PROSESNYA</span><span>DRAG / SCROLL</span></div></Reveal></section>;
 }
-function About({ settings }) {
+function About({ settings, tools, steps }) {
   const enabled = useContext(MotionContext);
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start 75%', 'end 75%'] });
@@ -397,8 +418,8 @@ function About({ settings }) {
   const skills = settings.skills || [];
   return <section id="about" className="about section-wrap" ref={ref}>
     <div className="tp-grid">
-      <ToolsStrip settings={settings}/>
-      <ProcessPanel/>
+      <ToolsStrip settings={settings} tools={tools}/>
+      <ProcessPanel steps={steps}/>
     </div>
   </section>;
 }
@@ -443,21 +464,23 @@ function ExperienceModal({ experiences, onClose }) {
 }
 
 function Journey({ onProject, experiences, certificates, settings }) {
+  const T = useT();
   const [details, setDetails] = useState(false);
   const education = settings.education || [];
   const skills = settings.skills || [];
   return <section id="experience" className="journey section-wrap">
-    <Reveal className="section-heading"><div><span className="eyebrow">Journey</span><WipeReveal as="h2">Always moving. Always creating<span className="accent">.</span></WipeReveal></div></Reveal>
-    <div className="journey-grid"><Reveal className="education-panel"><h3 className="panel-heading">Education & skills</h3><p className="eyebrow accent">Education</p>{education.map((e, i) => <div className="education-row" key={e.title + i}><strong>{e.title}</strong>{e.meta && <span>{e.meta}</span>}<p>{e.text}</p></div>)}<p className="eyebrow accent skills-heading">Creative toolkit</p><div className="skill-tags">{skills.map(s => <span key={s}>{s}</span>)}</div></Reveal>
+    <Reveal className="section-heading"><div><span className="eyebrow">{T.journey_eyebrow}</span><WipeReveal as="h2">{T.journey_title}<span className="accent">.</span></WipeReveal></div></Reveal>
+    <div className="journey-grid"><Reveal className="education-panel"><h3 className="panel-heading">{T.edu_title}</h3><p className="eyebrow accent">{T.edu_label}</p>{education.map((e, i) => <div className="education-row" key={e.title + i}><strong>{e.title}</strong>{e.meta && <span>{e.meta}</span>}<p>{e.text}</p></div>)}<p className="eyebrow accent skills-heading">{T.toolkit_label}</p><div className="skill-tags">{skills.map(s => <span key={s}>{s}</span>)}</div></Reveal>
     <div className="experience-list">
-      <div className="exp-list-head"><h3 className="panel-heading">Experience</h3><button className="exp-more" onClick={() => setDetails(true)}>View details<ChevronRight size={16}/></button></div>
-      {experiences.slice(0, 3).map((job, i) => <Reveal className="experience-row exp-static" key={job.id || job.title} delay={i * 0.04}><span className="experience-date">{dateEn(job.date_label)}</span><div><h3>{job.title}</h3><span className="experience-place">{job.place}</span>{job.description && <p className="exp-short">{shortOf(job.description)}</p>}</div></Reveal>)}
+      <div className="exp-list-head"><h3 className="panel-heading">{T.exp_title}</h3><button className="exp-more" onClick={() => setDetails(true)}>{T.exp_more}<ChevronRight size={16}/></button></div>
+      {experiences.slice(0, Math.max(1, parseInt(T.exp_count, 10) || 3)).map((job, i) => <Reveal className="experience-row exp-static" key={job.id || job.title} delay={i * 0.04}><span className="experience-date">{dateEn(job.date_label)}</span><div><h3>{job.title}</h3><span className="experience-place">{job.place}</span>{job.description && <p className="exp-short">{shortOf(job.description)}</p>}</div></Reveal>)}
     </div></div>
     <AnimatePresence>{details && <ExperienceModal experiences={experiences} onClose={() => setDetails(false)}/>}</AnimatePresence>
   </section>;
 }
 
 function Contact({ onProject, featured, settings }) {
+  const T = useT();
   const [sent, setSent] = useState(false);
   const send = e => {
     e.preventDefault();
@@ -467,14 +490,14 @@ function Contact({ onProject, featured, settings }) {
     setSent(true);
   };
   return <section id="contact" className="contact section-wrap">
-    <div className="contact-grid"><Reveal className="contact-intro"><span className="eyebrow">Contact</span><WipeReveal as="h2" className="display">Let’s work<br/>together<span className="accent">.</span></WipeReveal><p>Have a story to tell?<br/>Let’s make something worth watching.</p><div className="contact-actions"><Magnetic href={`https://wa.me/${settings.contact_whatsapp}`} target="_blank" rel="noopener noreferrer" className="contact-cta contact-btn"><span className="round-arrow"><ArrowUpRight size={21}/></span>Start a conversation</Magnetic><a className="contact-secondary contact-btn" href={`mailto:${settings.contact_email}`}>Send an email</a>{settings.cv_url && <a className="contact-resume contact-btn" href={settings.cv_url} target="_blank" rel="noopener noreferrer"><Download size={18}/>View resume</a>}</div></Reveal>
+    <div className="contact-grid"><Reveal className="contact-intro"><span className="eyebrow">{T.contact_eyebrow}</span><WipeReveal as="h2" className="display">{T.contact_title_1}<br/>{T.contact_title_2}<span className="accent">.</span></WipeReveal><p>{T.contact_text_1}<br/>{T.contact_text_2}</p><div className="contact-actions"><Magnetic href={`https://wa.me/${settings.contact_whatsapp}`} target="_blank" rel="noopener noreferrer" className="contact-cta contact-btn"><span className="round-arrow"><ArrowUpRight size={21}/></span>{T.contact_cta}</Magnetic><a className="contact-secondary contact-btn" href={`mailto:${settings.contact_email}`}>{T.contact_email_btn}</a>{settings.cv_url && <a className="contact-resume contact-btn" href={settings.cv_url} target="_blank" rel="noopener noreferrer"><Download size={18}/>{T.resume_label}</a>}</div></Reveal>
     <Reveal className="contact-links" delay={0.1}><a href={`mailto:${settings.contact_email}`}><Mail/><span><small>Email</small>{settings.contact_email}</span><ArrowUpRight size={16}/></a><a href={settings.contact_instagram_url} target="_blank" rel="noopener noreferrer"><Instagram/><span><small>Instagram</small>{settings.contact_instagram_handle}</span><ArrowUpRight size={16}/></a><a href={`tel:+${settings.contact_whatsapp}`}><Phone/><span><small>Phone / WhatsApp</small>{settings.contact_phone_display}</span><ArrowUpRight size={16}/></a><div><MapPin/><span><small>Based in</small>{(/^indramayu/i.test(settings.contact_location || '') ? (settings.hero_location || '') : (settings.contact_location || settings.hero_location || '')).replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '').trim().replace(/(^|[\s,])([A-Za-z])([A-Za-z]*)/g, (m, sp, f, r) => sp + f.toUpperCase() + r.toLowerCase())}</span></div></Reveal>
 </div>
-    <Reveal><details className="project-brief"><summary><span className="brief-icon"><MessageCircle size={22}/></span><span className="brief-text"><b>Tell me about your project</b><small>Share your idea, needs, and timeline. It opens as a draft in WhatsApp.</small></span><span className="brief-chips" aria-hidden="true"><i>Film</i><i>Commercial</i><i>Collab</i></span><Plus size={19}/></summary><form onSubmit={send}><label>Your name<input name="name" required placeholder="Name or brand" autoComplete="name" maxLength="100"/></label><label>Project type<select name="type"><option>Film & Video Editing</option><option>Commercial Content</option><option>Other collaboration</option></select></label><label className="brief-message">About the project<textarea name="message" required rows="3" placeholder="Share your idea, needs, and rough timeline…" maxLength="3000"/></label><button className="solid-button" type="submit">Continue on WhatsApp <ArrowUpRight size={18}/></button><p className="form-note" role="status">{sent ? 'Message drafted in WhatsApp. Press Send there to start the conversation.' : 'Your brief opens as a draft message in WhatsApp.'}</p></form></details></Reveal>
+    <Reveal><details className="project-brief"><summary><span className="brief-icon"><MessageCircle size={22}/></span><span className="brief-text"><b>{T.brief_title}</b><small>{T.brief_sub}</small></span><span className="brief-chips" aria-hidden="true">{String(T.brief_chips || '').split(',').map(c => c.trim()).filter(Boolean).map(c => <i key={c}>{c}</i>)}</span><Plus size={19}/></summary><form onSubmit={send}><label>Your name<input name="name" required placeholder="Name or brand" autoComplete="name" maxLength="100"/></label><label>Project type<select name="type"><option>Film & Video Editing</option><option>Commercial Content</option><option>Other collaboration</option></select></label><label className="brief-message">About the project<textarea name="message" required rows="3" placeholder="Share your idea, needs, and rough timeline…" maxLength="3000"/></label><button className="solid-button" type="submit">Continue on WhatsApp <ArrowUpRight size={18}/></button><p className="form-note" role="status">{sent ? 'Message drafted in WhatsApp. Press Send there to start the conversation.' : 'Your brief opens as a draft message in WhatsApp.'}</p></form></details></Reveal>
   </section>;
 }
 
-function ProjectDialog({ project, onClose }) {
+function ProjectDialog({ project, onClose, handle, avatar }) {
   const ref = useRef(null);
   const [renderMode, setRenderMode] = useState('final');
   const [shot, setShot] = useState(0);
@@ -485,12 +508,14 @@ function ProjectDialog({ project, onClose }) {
   const activeShot = project.type === 'render' ? project.renders[shot] : null;
   const embedType = activeShot?.video ? 'youtube' : activeShot?.drive ? 'drive' : project.type;
   const embedMedia = activeShot?.video || activeShot?.drive?.match(/\/d\/([^/]+)/)?.[1] || project.media;
-  const isVideo = ['youtube', 'drive'].includes(embedType);
+  const [copied, setCopied] = useState(false);
+  const linkInfo = project.type === 'link' ? linkEmbed(project.media) : null;
+  const isVideo = ['youtube', 'drive'].includes(embedType) || !!linkInfo;
   const isUpload = project.type === 'video';
   const availableModes = [['layout', 'Layout'], ['solid', 'Solid'], ['material', 'Material'], ['lighting', 'Lighting'], ['final', 'Final render']].filter(([mode]) => activeShot?.[mode] && !(mode === 'solid' && activeShot.hideSolidMode));
   const effectiveMode = activeShot?.[renderMode] ? renderMode : availableModes[0]?.[0];
   const rendered = activeShot?.[effectiveMode] || activeShot?.image || project.image;
-  const sourceUrl = embedType === 'youtube' ? `https://www.youtube.com/watch?v=${embedMedia}` : embedType === 'drive' ? `https://drive.google.com/file/d/${embedMedia}/view` : project.type === 'render' ? rendered : isUpload ? '' : project.media || project.image;
+  const sourceUrl = embedType === 'youtube' ? `https://www.youtube.com/watch?v=${embedMedia}` : embedType === 'drive' ? `https://drive.google.com/file/d/${embedMedia}/view` : project.type === 'link' ? project.media : project.type === 'render' ? rendered : isUpload ? '' : project.media || project.image;
   const changeShot = next => { setMediaLoaded(false); setMediaFailed(false); setShot(next); };
   useEffect(() => {
     const previous = document.activeElement;
@@ -514,28 +539,63 @@ function ProjectDialog({ project, onClose }) {
     const timer = setTimeout(() => { if (!mediaLoaded) setMediaFailed(true); }, 14000);
     return () => clearTimeout(timer);
   }, [mediaLoaded, retried, isVideo, embedMedia]);
+  if (linkInfo?.name === 'Instagram') {
+    const crop = linkInfo.kind === 'Reel';
+    return <motion.div className="dialog-backdrop ig-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <button className="ig-close" onClick={onClose} aria-label="Close"><X size={22}/></button>
+      <motion.div ref={ref} className="ig-modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabIndex="-1" initial={enabled ? { y: 40, scale: 0.97 } : false} animate={{ y: 0, scale: 1 }} exit={{ y: 20, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }}>
+        <div className="ig-media">
+          <div className={`ig-frame${crop ? ' crop' : ''}`}>
+            {!mediaLoaded && <div className="media-loading" role="status">{mediaFailed ? <><p>Preview unavailable. Open it on Instagram.</p><button className="outline-button" onClick={() => { setMediaFailed(false); setMediaLoaded(false); setRetried(v => v + 1); }}>Coba lagi</button></> : <><span className={enabled ? 'loading-ring' : 'loading-ring paused'}/><p>Loading…</p></>}</div>}
+            <iframe key={`${embedMedia}-${retried}`} src={linkInfo.src} title={project.title} allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen onLoad={() => { setMediaLoaded(true); setMediaFailed(false); }} onError={() => setMediaFailed(true)}/>
+          </div>
+        </div>
+        <aside className="ig-side">
+          <header className="ig-user">
+            <span className="ig-avatar"><span className="ig-avatar-img" style={avatar ? { backgroundImage: `url("${avatar}")` } : undefined}>{!avatar && 'A'}</span></span>
+            <div><b>{(handle || '@ceritazizi').replace(/^@/, '')}</b><small>{project.category} · {linkInfo.kind}{project.year ? ` · ${project.year}` : ''}</small></div>
+            <a className="ig-follow" href={sourceUrl} target="_blank" rel="noopener noreferrer">View</a>
+          </header>
+          <div className="ig-caption">
+            <h2 id="dialog-title"><b>{(handle || '@ceritazizi').replace(/^@/, '')}</b> {project.title}</h2>
+            {project.role && <p className="ig-role">{project.role}</p>}
+            {project.description && <p>{project.description}</p>}
+            <p className="ig-tag">{linkInfo.kind} on Instagram</p>
+          </div>
+          <div className="ig-actions">
+            <a href={sourceUrl} target="_blank" rel="noopener noreferrer" aria-label="Like on Instagram"><Heart size={24}/></a>
+            <a href={sourceUrl} target="_blank" rel="noopener noreferrer" aria-label="Comment on Instagram"><MessageCircle size={24}/></a>
+            <a href={sourceUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on Instagram"><Send size={24}/></a>
+            <button type="button" className="ig-copy" onClick={() => { try { navigator.clipboard.writeText(sourceUrl); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch {} }}>{copied ? <><Check size={16}/>Copied</> : <><Link2 size={16}/>Copy link</>}</button>
+          </div>
+          <a className="ig-open" href={sourceUrl} target="_blank" rel="noopener noreferrer"><Instagram size={18}/>Open on Instagram<ExternalLink size={15}/></a>
+        </aside>
+      </motion.div>
+    </motion.div>;
+  }
   return <motion.div className="dialog-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-    <motion.div ref={ref} className="project-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabIndex="-1" initial={enabled ? { y: 45, scale: 0.97 } : false} animate={{ y: 0, scale: 1 }} exit={{ y: 20, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }}>
+    <motion.div ref={ref} className={`project-dialog${linkInfo?.tall ? " tall-layout" : ""}`} role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabIndex="-1" initial={enabled ? { y: 45, scale: 0.97 } : false} animate={{ y: 0, scale: 1 }} exit={{ y: 20, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }}>
       <div className="dialog-heading"><span className="eyebrow">{project.category} {project.year && ` / ${project.year}`}</span><button onClick={onClose} className="icon-button" aria-label="Close"><X/></button></div>
-      <div className={`dialog-media ${!isVideo && !isUpload ? 'still' : ''}${isUpload ? ' native' : ''}`}>
-        {isVideo ? <>{!mediaLoaded && <div className="media-loading" role="status">{mediaFailed ? <><p>Preview unavailable. Open the original source to watch.</p><button className="outline-button" onClick={() => { setMediaFailed(false); setMediaLoaded(false); setRetried(v => v + 1); }}>Coba lagi</button></> : <><span className={enabled ? 'loading-ring' : 'loading-ring paused'}/><p>Loading film…</p></>}</div>}<iframe key={`${embedMedia}-${retried}`} src={embedType === 'youtube' ? `https://www.youtube-nocookie.com/embed/${embedMedia}?autoplay=1&rel=0` : `https://drive.google.com/file/d/${embedMedia}/preview`} title={project.title} width="1280" height="720" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen onLoad={() => { setMediaLoaded(true); setMediaFailed(false); }} onError={() => setMediaFailed(true)}/></> : isUpload ? <video key={project.media} src={project.media} poster={project.image || undefined} controls autoPlay playsInline preload="metadata" controlsList="nodownload"/> : <MediaImage src={rendered} alt={project.title} priority/>}
+      <div className={`dialog-media ${!isVideo && !isUpload ? 'still' : ''}${isUpload ? ' native' : ''}${linkInfo?.tall ? ' tall' : ''}`}>
+        {isVideo ? <>{!mediaLoaded && <div className="media-loading" role="status">{mediaFailed ? <><p>Preview unavailable. Open the original source to watch.</p><button className="outline-button" onClick={() => { setMediaFailed(false); setMediaLoaded(false); setRetried(v => v + 1); }}>Coba lagi</button></> : <><span className={enabled ? 'loading-ring' : 'loading-ring paused'}/><p>Loading film…</p></>}</div>}<iframe key={`${embedMedia}-${retried}`} src={linkInfo ? linkInfo.src : embedType === 'youtube' ? `https://www.youtube-nocookie.com/embed/${embedMedia}?autoplay=1&rel=0` : `https://drive.google.com/file/d/${embedMedia}/preview`} title={project.title} width="1280" height="720" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen onLoad={() => { setMediaLoaded(true); setMediaFailed(false); }} onError={() => setMediaFailed(true)}/></> : isUpload ? <video key={project.media} src={project.media} poster={project.image || undefined} controls autoPlay playsInline preload="metadata" controlsList="nodownload"/> : project.type === 'link' && !rendered ? <LinkCover url={project.media} title={project.title}/> : <MediaImage src={rendered} alt={project.title} priority/>}
       </div>
       {project.type === 'render' && (availableModes.length > 0 || project.renders.length > 1) && <div className="render-controls"><div role="group" aria-label="Tahap render">{availableModes.map(([mode, label]) => <button key={mode} className={effectiveMode === mode ? 'selected' : ''} onClick={() => setRenderMode(mode)} aria-pressed={effectiveMode === mode}>{label}</button>)}</div>{project.renders.length > 1 && <div className="shot-controls"><button className="icon-button" aria-label="Shot sebelumnya" onClick={() => changeShot((shot - 1 + project.renders.length) % project.renders.length)}><ChevronLeft/></button><span>SHOT {shot + 1} / {project.renders.length}</span><button className="icon-button" aria-label="Shot selanjutnya" onClick={() => changeShot((shot + 1) % project.renders.length)}><ChevronRight/></button></div>}</div>}
-      <div className="dialog-description"><div><h2 id="dialog-title">{project.title}</h2>{project.role && <span className="accent">{project.role}</span>}<p>{project.description}</p></div>{sourceUrl && <a className="outline-button" href={sourceUrl} target="_blank" rel="noopener noreferrer">{project.type === 'website' ? 'Kunjungi website' : 'Open original source'}<ExternalLink size={15}/></a>}</div>
+      <div className="dialog-description"><div>{linkInfo && <span className="platform-chip" data-p={linkInfo.name}>{linkInfo.name} · {linkInfo.kind}</span>}<h2 id="dialog-title">{project.title}</h2>{project.role && <span className="accent">{project.role}</span>}<p>{project.description}</p></div>{sourceUrl && <a className={`outline-button${linkInfo ? ' open-post' : ''}`} data-p={linkInfo?.name} href={sourceUrl} target="_blank" rel="noopener noreferrer">{project.type === 'website' ? 'Kunjungi website' : project.type === 'link' ? 'Open original post' : 'Open original source'}<ExternalLink size={15}/></a>}</div>
       {isVideo && <p className="embed-note">Jika video dibatasi oleh pemiliknya, gunakan “Open original source”.</p>}
     </motion.div>
   </motion.div>;
 }
 
-const STRIP_TOOLS = [['cc', 'CapCut', './Asset/svg/cc.svg'], ['pr', 'Premiere Pro', './Asset/svg/pr.svg'], ['ae', 'After Effects', './Asset/svg/ae.svg'], ['tool-green', 'Affinity by Canva', './Asset/img/tools/tool-green.png']];
-function ToolsStrip({ settings }) {
+function ToolsStrip({ settings, tools }) {
+  const T = useT();
+  const STRIP_TOOLS = (tools && tools.length ? tools : DEFAULT_TOOLS).map((t, i) => [`t${i}`, t.name, t.icon_url]);
   const enabled = useContext(MotionContext);
   const skills = settings.skills || [];
   const pop = i => enabled ? { initial: { opacity: 0, y: 36, scale: 0.55 }, whileInView: { opacity: 1, y: 0, scale: 1 }, viewport: { once: true, amount: 0.6 }, transition: { type: 'spring', stiffness: 260, damping: 15, delay: 0.1 + i * 0.09 } } : {};
   return <div className="tools-col" aria-label="Tools and skills">
-    <Reveal><p className="eyebrow">Toolkit</p><h3 className="panel-heading">The tools behind the work</h3></Reveal>
+    <Reveal><p className="eyebrow">{T.toolkit_eyebrow}</p><h3 className="panel-heading">{T.toolkit_title}</h3></Reveal>
     <div className="tools-wrap">
-      <ul className="dock" aria-label="Tools I edit with">{STRIP_TOOLS.map(([f, n, src], i) => <motion.li className="dock-item" key={f} {...pop(i)}>
+      <ul className="dock" aria-label="Tools I edit with">{STRIP_TOOLS.map(([f, n, src], i) => <motion.li className="dock-item" key={f + n} {...pop(i)}>
         <img src={src} alt={n || 'Tool'} width="64" height="64" draggable="false"/>
         {n && <span className="dock-tip">{n}</span>}
       </motion.li>)}</ul>
@@ -608,6 +668,9 @@ function App() {
   const [experiences, setExperiences] = useState(DEFAULT_EXPERIENCES);
   const [awards, setAwards] = useState(DEFAULT_AWARDS);
   const [certificates, setCertificates] = useState(DEFAULT_CERTIFICATES);
+  const [tools, setTools] = useState(null);
+  const [clients, setClients] = useState(null);
+  const [steps, setSteps] = useState(null);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   useEffect(() => {
     let active = true;
@@ -627,6 +690,15 @@ function App() {
     });
     supabase.from('certificates').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
       if (active && !error && data && data.length) setCertificates(data);
+    });
+    supabase.from('clients').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
+      if (active && !error && data && data.length) setClients(data);
+    });
+    supabase.from('tools').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
+      if (active && !error && data && data.length) setTools(data);
+    });
+    supabase.from('process_steps').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
+      if (active && !error && data && data.length) setSteps(data);
     });
     supabase.from('categories').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
       if (active && !error && data && data.length) setCategories(['All', ...data.map(c => c.name)]);
@@ -662,7 +734,8 @@ function App() {
   };
   const toggle = () => { setMotionOn(!motionOn); try { localStorage.setItem('azizi-motion', motionOn ? 'off' : 'on'); } catch {} };
     const close = React.useCallback(() => setProject(null), []);
-  return <MotionContext.Provider value={enabled}>
+  const texts = useMemo(() => { const o = { ...DEFAULT_TEXTS }; Object.entries(settings.texts || {}).forEach(([k, v]) => { if (typeof v === 'string' && v.trim()) o[k] = v; }); return o; }, [settings.texts]);
+  return <MotionContext.Provider value={enabled}><TextsContext.Provider value={texts}>
     <MotionConfig reducedMotion={enabled ? 'user' : 'always'} transition={{ ease: EASE }}>
       <a className="skip-link" href="#portfolio">Skip to work</a>
       <FloatingPortrait portraitUrl={settings.portrait_url}/>
@@ -671,23 +744,23 @@ function App() {
       <Header enabled={enabled} onToggle={toggle} theme={theme} onToggleTheme={toggleTheme}/>
       <main>
         <Hero onProject={setProject} featured={featured} settings={settings}/>
-        <ClientsStrip/>
-        <About settings={settings}/>
+        <ClientsStrip clients={clients}/>
+        <About settings={settings} tools={tools} steps={steps}/>
         <Portfolio onProject={setProject} archive={archive} featured={featured} loading={archiveLoading} categories={categories}/>
         <Journey onProject={setProject} experiences={experiences} certificates={certificates} settings={settings}/>
         <Contact onProject={setProject} featured={featured} settings={settings}/>
       </main>
       <footer className="footer">
         <a className="wordmark" href="#home">Azizi</a>
-        <span>© {new Date().getFullYear()} Azizi. Every frame has a purpose.</span>
+        <span>© {new Date().getFullYear()} {texts.hero_name}. {texts.footer_text}</span>
         <div>
           <a href={settings.contact_instagram_url} target="_blank" rel="noopener noreferrer" aria-label={`Instagram ${settings.contact_instagram_handle}`}><Instagram size={17}/></a>
           <a href="#home" aria-label="Kembali ke atas"><ArrowUpRight size={18}/></a>
         </div>
       </footer>
-      <AnimatePresence>{project && <ProjectDialog key={project.title} project={project} onClose={close}/>}</AnimatePresence>
+      <AnimatePresence>{project && <ProjectDialog key={project.title} project={project} onClose={close} handle={settings.contact_instagram_handle} avatar={settings.portrait_url}/>}</AnimatePresence>
     </MotionConfig>
-  </MotionContext.Provider>;
+  </TextsContext.Provider></MotionContext.Provider>;
 }
 
 createRoot(document.getElementById('root')).render(<App/>);

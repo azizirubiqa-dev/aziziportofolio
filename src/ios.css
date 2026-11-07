@@ -379,7 +379,7 @@ html[data-motion=off] .skill-pills li::after{animation:none;display:none}
 :root:root:root body .clients-row li:hover{animation-play-state:paused}
 :root:root:root body .clients-row li:hover .client-logo{transform:translateY(-4px) scale(1.08) rotate(-1.5deg);box-shadow:0 20px 30px -14px rgba(10,100,255,.55)}
 :root:root:root body .clients-row li:hover .client-logo::after{transform:translateX(130%)}
-:root:root:root body .clients-row li:last-child .client-logo{box-shadow:none;overflow:visible}
+:root:root:root body .clients-row li.tl .client-logo{box-shadow:none;overflow:visible}
 @keyframes clientFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 html[data-motion=off] .clients-row li{animation:none}
 @media(max-width:600px){
@@ -610,7 +610,7 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
 [data-theme="dark"] body .contact-grid{box-shadow:0 40px 80px -40px rgba(10,60,200,.55)}
 [data-theme="dark"] body .exp-backdrop{background:rgba(8,12,24,.55)}
 [data-theme="dark"] body .pp-card{box-shadow:0 0 0 1px rgba(150,170,210,.12),0 26px 54px -28px rgba(0,0,0,.6)}
-[data-theme="dark"] body .clients-row li:last-child .client-logo{background:#eef3ff;padding:3px 10px;overflow:hidden}
+[data-theme="dark"] body .clients-row li.tl .client-logo{background:#eef3ff;padding:3px 10px;overflow:hidden}
 [data-theme="dark"] body .client-logo{box-shadow:0 0 0 1px rgba(150,170,210,.18),0 10px 22px -12px rgba(0,0,0,.6)}
 
 /* mode gelap: teks kiri hero lebih jelas dan menonjol */
@@ -729,7 +729,7 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
 /* Fix: logo bergetar saat di-hover (pseudo shine & rotate memicu overflow/hover loop) */
 :root:root:root body .clients-row{overflow:hidden}
 :root:root:root body .client-logo::after,:root:root:root body .client-logo img{pointer-events:none}
-:root:root:root body .clients-row li:last-child .client-logo{overflow:hidden}
+:root:root:root body .clients-row li.tl .client-logo{overflow:hidden}
 :root:root:root body .clients-row li{padding:6px 0;cursor:default}
 :root:root:root body .clients-row li:hover .client-logo{transform:translateY(-3px) scale(1.05);will-change:transform;backface-visibility:hidden}
 
@@ -739,3 +739,186 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
 /* Motion off: "Portfolio" tetap tampil (tanpa span per huruf, teks transparan jadi hilang) */
 html[data-motion=off] .hero-title{background-image:linear-gradient(180deg,#0a84ff 0%,rgba(10,132,255,.6) 60%,rgba(0,194,255,.3) 100%);-webkit-background-clip:text;background-clip:text}
 html[data-motion=off][data-theme="dark"] .hero-title{background-image:linear-gradient(180deg,#4aa3ff 0%,rgba(74,163,255,.5) 60%,rgba(51,201,255,.25) 100%)}
+
+/* embed vertikal (Instagram Reels / TikTok) */
+:root:root:root body .dialog-media.tall{aspect-ratio:auto;height:min(78dvh,780px)}
+:root:root:root body .dialog-media.tall iframe{left:50%;right:auto;width:min(100%,430px);transform:translateX(-50%)}
+
+/* sampul otomatis untuk link tanpa thumbnail */
+.link-cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#fff;text-align:center;padding:20px}
+.link-cover-icon{width:68px;height:68px;border-radius:22px;display:grid;place-items:center;background:rgba(255,255,255,.2);backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}
+.link-cover b{font-size:22px;letter-spacing:-.02em}
+.link-cover small{max-width:80%;font-size:13px;opacity:.85;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Detail karya dari link (Instagram/TikTok): panggung + kartu embed */
+:root:root:root body .dialog-media.tall{height:min(84dvh,880px);max-height:none;background:radial-gradient(120% 90% at 50% 0%,rgba(10,132,255,.16),transparent 60%),radial-gradient(90% 70% at 0% 100%,rgba(214,41,118,.16),transparent 60%),radial-gradient(90% 70% at 100% 100%,rgba(254,218,117,.18),transparent 60%),var(--fill);display:flex;justify-content:center;align-items:center;padding:18px 0}
+:root:root:root body .dialog-media.tall iframe{position:relative;inset:auto;left:auto;transform:none;width:min(94%,440px);height:100%;border:0;border-radius:24px;background:#fff;box-shadow:0 30px 60px -24px rgba(10,20,60,.55),0 0 0 1px rgba(20,40,100,.08)}
+:root:root:root body .dialog-media.tall .media-loading{z-index:1}
+.platform-chip{display:inline-flex;align-items:center;margin:0 0 10px;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.02em;color:#fff;background:linear-gradient(135deg,#0a84ff,#6a5cf0)}
+.platform-chip[data-p="Instagram"]{background:linear-gradient(135deg,#f58529,#dd2a7b 55%,#8134af)}
+.platform-chip[data-p="TikTok"]{background:linear-gradient(135deg,#111,#25f4ee 170%)}
+:root:root:root body .outline-button.open-post{background:linear-gradient(135deg,#0a84ff,#6a5cf0);color:#fff;border:0;box-shadow:0 12px 26px -12px rgba(10,100,255,.7)}
+:root:root:root body .outline-button.open-post[data-p="Instagram"]{background:linear-gradient(135deg,#f58529,#dd2a7b 55%,#8134af);box-shadow:0 12px 26px -12px rgba(221,42,123,.7)}
+:root:root:root body .outline-button.open-post:hover{filter:brightness(1.07);transform:translateY(-2px)}
+
+/* Layout dua kolom untuk embed vertikal: embed di kiri (sepadan lebarnya), info di kanan */
+@media(min-width:861px){
+  :root:root:root body .project-dialog.tall-layout{width:min(980px,100%);display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:36px;align-items:start}
+  :root:root:root body .project-dialog.tall-layout .dialog-heading{grid-column:1/-1}
+  :root:root:root body .project-dialog.tall-layout .dialog-media.tall{grid-column:1;grid-row:2/span 3;height:min(80dvh,800px);padding:0;background:none;display:block;overflow:visible}
+  :root:root:root body .project-dialog.tall-layout .dialog-media.tall iframe{width:100%;height:100%}
+  :root:root:root body .project-dialog.tall-layout .dialog-description{grid-column:2;grid-row:2;flex-direction:column;align-items:flex-start;gap:22px;padding:6px 0 0;border:0}
+  :root:root:root body .project-dialog.tall-layout .dialog-description h2{font-size:clamp(28px,3vw,40px);line-height:1.1;margin:0 0 10px}
+  :root:root:root body .project-dialog.tall-layout .embed-note{grid-column:2;grid-row:3;align-self:start}
+}
+@media(max-width:860px){:root:root:root body .dialog-media.tall{height:min(78dvh,760px)}}
+@media(min-width:861px){
+  :root:root:root body .project-dialog.tall-layout{padding-bottom:26px;column-gap:32px;grid-template-columns:minmax(0,440px) minmax(0,1fr)}
+  :root:root:root body .project-dialog.tall-layout .dialog-media.tall{margin-left:28px;height:min(76dvh,780px)}
+  :root:root:root body .project-dialog.tall-layout .dialog-description{padding:8px 32px 0 0}
+  :root:root:root body .project-dialog.tall-layout .embed-note{padding:0 32px 0 0;margin:0;align-self:end}
+}
+
+/* Jendela karya Instagram bergaya Instagram web */
+:root:root:root body .ig-backdrop{background:rgba(0,0,0,.78);backdrop-filter:blur(6px)}
+.ig-modal{--h:min(86dvh,760px);position:relative;display:grid;grid-template-columns:auto 360px;height:var(--h);max-width:96vw;margin:auto;background:var(--card);border-radius:16px;overflow:hidden;box-shadow:0 40px 100px -30px rgba(0,0,0,.8);outline:0}
+.ig-close{position:absolute;top:12px;right:12px;z-index:5;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(0,0,0,.45);color:#fff;cursor:pointer;backdrop-filter:blur(6px)}
+.ig-media{background:#000;display:grid;place-items:center;min-width:0;height:var(--h)}
+.ig-frame{position:relative;overflow:hidden;background:#000;height:var(--h);width:min(480px,calc(100vw - 420px))}
+.ig-frame.crop{height:auto;aspect-ratio:4/5;width:min(calc(var(--h)*.8),calc(100vw - 420px))}
+.ig-frame iframe{position:absolute;left:0;top:0;width:100%;height:100%;border:0;background:#fff}
+.ig-frame.crop iframe{top:-62px;height:calc(100% + 62px + 320px)}
+.ig-frame .media-loading{z-index:1;color:#fff}
+.ig-side{display:flex;flex-direction:column;min-width:0;height:var(--h)}
+.ig-user{display:flex;align-items:center;gap:12px;padding:16px 56px 14px 16px;border-bottom:1px solid var(--line)}
+.ig-avatar{flex:none;width:42px;height:42px;border-radius:50%;padding:2px;background:linear-gradient(45deg,#feda75,#fa7e1e,#d62976,#962fbf,#4f5bd5);display:grid;place-items:center}
+.ig-avatar img,.ig-avatar i{width:100%;height:100%;border-radius:50%;border:2px solid var(--card);object-fit:cover;object-position:top;background:var(--fill);display:grid;place-items:center;font-style:normal;font-weight:700;color:var(--ink)}
+.ig-user>div{min-width:0;flex:1}
+.ig-user b{display:block;font-size:14px;color:var(--ink)}
+.ig-user small{font-size:12px;color:var(--muted)}
+.ig-follow{font-size:13px;font-weight:700;color:#0095f6;text-decoration:none}
+.ig-follow:hover{color:var(--ink)}
+.ig-caption{flex:1;overflow-y:auto;padding:16px;font-size:14px;line-height:1.55;color:var(--ink)}
+.ig-caption h2{margin:0 0 8px;font-size:14px;font-weight:400;letter-spacing:0;line-height:1.55}
+.ig-caption h2 b{font-weight:700;margin-right:4px}
+.ig-caption p{margin:0 0 10px;color:var(--muted)}
+.ig-caption .ig-role{color:#0095f6;font-weight:600}
+.ig-caption .ig-tag{font-size:12px;text-transform:uppercase;letter-spacing:.06em;opacity:.7}
+.ig-actions{display:flex;gap:16px;padding:12px 16px;border-top:1px solid var(--line)}
+.ig-actions a{color:var(--ink);display:grid;place-items:center;transition:transform .2s}
+.ig-actions a:hover{transform:scale(1.15);color:#ed4956}
+.ig-open{margin:4px 16px 16px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:700;font-size:14px;color:#fff;text-decoration:none;background:linear-gradient(135deg,#f58529,#dd2a7b 55%,#8134af)}
+.ig-open:hover{filter:brightness(1.08)}
+@media(max-width:860px){
+  .ig-modal{display:block;height:auto;max-height:92dvh;overflow-y:auto;width:min(480px,96vw)}
+  .ig-media,.ig-side{height:auto}
+  .ig-frame,.ig-frame.crop{width:100%;height:auto;aspect-ratio:4/5}
+  .ig-frame:not(.crop){height:72dvh;aspect-ratio:auto}
+}
+.ig-avatar img,.ig-avatar i{width:38px;height:38px;max-width:none}
+.ig-avatar img{object-position:50% 12%}
+
+/* IG modal: rapikan & naik level */
+.ig-modal{grid-template-columns:auto 380px}
+:root:root:root body .ig-close{position:fixed;top:18px;right:22px;z-index:9;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);transition:transform .25s cubic-bezier(.3,1.5,.5,1),background .2s}
+:root:root:root body .ig-close:hover{background:rgba(255,255,255,.28);transform:rotate(90deg)}
+.ig-media{background:radial-gradient(70% 55% at 15% 100%,rgba(214,41,118,.28),transparent 70%),radial-gradient(70% 55% at 90% 0%,rgba(79,91,213,.3),transparent 70%),#050507}
+.ig-frame{width:min(540px,calc(100vw - 460px));height:auto;max-height:var(--h);border-radius:0;box-shadow:0 30px 70px -20px rgba(0,0,0,.8)}
+.ig-frame:not(.crop){height:var(--h)}
+.ig-frame.crop{width:min(540px,calc(100vw - 460px));aspect-ratio:4/5}
+.ig-user{padding:18px 20px 16px;gap:14px}
+.ig-avatar{width:50px;height:50px;padding:2.5px}
+.ig-avatar-img{width:100%;height:100%;border-radius:50%;border:2.5px solid var(--card);background:var(--fill) center 12%/cover no-repeat;display:grid;place-items:center;font-weight:700;color:var(--ink)}
+.ig-user b{font-size:15px}
+.ig-follow{padding:7px 14px;border-radius:999px;background:rgba(0,149,246,.12)}
+.ig-follow:hover{background:rgba(0,149,246,.2);color:#0095f6}
+.ig-caption{padding:18px 20px}
+.ig-caption h2{font-size:15px;font-weight:500;line-height:1.5}
+.ig-actions{align-items:center;padding:12px 20px}
+.ig-copy{margin-left:auto;display:inline-flex;align-items:center;gap:6px;border:0;background:var(--fill);color:var(--ink);font:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;cursor:pointer;transition:background .2s,transform .2s}
+.ig-copy:hover{background:rgba(10,132,255,.14);transform:translateY(-1px)}
+.ig-open{margin:4px 20px 20px}
+@media(max-width:860px){.ig-close{top:10px;right:10px;width:38px;height:38px}.ig-frame,.ig-frame.crop{width:100%}}
+
+/* IG modal v3: ukuran embed dikunci 480×600 lalu diskalakan (--k) agar tidak ada sisa putih / terpotong */
+@media(min-width:861px){
+  .ig-modal{--k:1.12;--fw:calc(480px*var(--k));--fh:calc(600px*var(--k));--h:var(--fh);height:var(--fh);grid-template-columns:var(--fw) 380px;width:auto}
+  .ig-modal .ig-media{width:var(--fw);height:var(--fh)}
+  .ig-modal .ig-frame,.ig-modal .ig-frame.crop{width:var(--fw);height:var(--fh);max-height:none;aspect-ratio:auto;box-shadow:none}
+  .ig-modal .ig-frame iframe{width:480px;height:calc(var(--fh)/var(--k));top:0;transform:scale(var(--k));transform-origin:0 0}
+  .ig-modal .ig-frame.crop iframe{top:calc(-62px*var(--k));height:calc(600px + 62px + 420px)}
+  .ig-modal .ig-side{height:var(--fh)}
+}
+@media(min-width:861px) and (max-height:820px){.ig-modal{--k:1}}
+@media(min-width:861px) and (max-height:700px){.ig-modal{--k:.86}}
+@media(max-width:860px){
+  .ig-modal .ig-frame iframe{transform:none}
+  .ig-modal .ig-frame.crop iframe{top:-62px;height:calc(100% + 62px + 420px)}
+}
+
+/* IG modal v4: potong sedikit lebih pendek supaya "View more on Instagram" tidak terlihat */
+@media(min-width:861px){
+  .ig-modal{--fh:calc(556px*var(--k))}
+  .ig-modal .ig-frame.crop iframe{top:calc(-62px*var(--k))}
+}
+@media(max-width:860px){
+  .ig-modal .ig-frame.crop{aspect-ratio:480/556}
+}
+
+/* IG modal: hilangkan garis tegak tipis di antara video dan panel (tepi embed disembunyikan) */
+@media(min-width:861px){
+  .ig-modal .ig-frame{background:#000;overflow:hidden}
+  .ig-modal .ig-frame iframe{width:488px;transform:scale(var(--k));left:calc(-4px*var(--k))}
+  .ig-modal .ig-media{overflow:hidden;margin-right:-1px;position:relative;z-index:1}
+}
+
+/* Mobile (≤600px): gaya tetap sama, teks diberi kartu kaca + lebih besar agar mudah terbaca */
+@media(max-width:600px){
+  :root:root:root body .hero-intro{width:calc(100% - 40px);max-width:none;bottom:66px;padding:16px 16px 18px;border-radius:24px;background:linear-gradient(160deg,rgba(255,255,255,.84),rgba(240,247,255,.72));backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);box-shadow:0 0 0 1px rgba(10,132,255,.14),0 18px 40px -22px rgba(20,60,140,.5)}
+  :root:root:root body .hero-intro::before{display:none}
+  :root:root:root body .hero-side{translate:0 -50px}
+  :root:root:root body .hero-description{font-size:13.5px;line-height:1.55;color:#4a5468}
+  :root:root:root body .hero-description mark{font-weight:700;color:#0b1220}
+  :root:root:root body .hero-description .hl-a{color:#0a6bff;font-weight:700;background:linear-gradient(transparent 62%,rgba(10,132,255,.2) 62%);padding:0 2px;border-radius:2px}
+  :root:root:root body .hero-role span{font-size:15px}
+  :root:root:root body .hero-actions{margin-top:14px}
+}
+@media(max-width:600px){
+  :root[data-theme="dark"]:root:root body .hero-intro{background:linear-gradient(160deg,rgba(22,27,42,.9),rgba(16,21,34,.84));box-shadow:0 0 0 1px rgba(150,170,210,.22),0 18px 40px -22px rgba(0,0,0,.85)}
+  :root[data-theme="dark"]:root:root body .hero-description{color:#d3dbec}
+  :root[data-theme="dark"]:root:root body .hero-description mark{color:#fff}
+  :root[data-theme="dark"]:root:root body .hero-description .hl-a{color:#9ccbff;background:linear-gradient(transparent 62%,rgba(74,163,255,.3) 62%)}
+  :root[data-theme="dark"]:root:root body .hero-role span{background:rgba(74,163,255,.2)}
+}
+@media(max-width:600px){:root:root:root body .hero-stats>div{padding:9px 12px}:root:root:root body .hero-stats>div>.display{font-size:25px}}
+
+/* Mobile: judul Portfolio naik & terlihat, statistik di bawahnya, sorotan kata tanpa bayangan */
+@media(max-width:600px){
+  :root:root:root body .hero-title{top:34px}
+  :root:root:root body .hero-side{translate:0 -6px}
+  :root:root:root body .hero-stats>div{padding:7px 11px}
+  :root:root:root body .hero-stats>div>.display{font-size:22px;min-width:0}
+  :root:root:root body .hero-stats>div>.stat-global{font-size:19px!important}
+  :root:root:root body .hero-stats p{font-size:9.5px;line-height:1.25}
+  :root:root:root body .hero-intro{bottom:52px}
+  :root:root:root body .hero-description .hl-a,[data-theme="dark"] body .hero-description .hl-a,:root[data-theme="dark"]:root:root body .hero-description .hl-a{background:none!important;text-shadow:none!important;box-shadow:none!important;padding:0;border-radius:0}
+}
+@media(max-width:600px){:root:root:root body .hero-intro{bottom:70px}}
+
+/* Mobile: logo klien satu baris, geser ke samping jika tidak muat */
+@media(max-width:700px){
+  :root:root:root body .clients-row{flex-wrap:nowrap;justify-content:flex-start;gap:26px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;scrollbar-width:none;padding:22px 22px;overscroll-behavior-x:contain}
+  :root:root:root body .clients-row::-webkit-scrollbar{display:none}
+  :root:root:root body .clients-row li{flex:none;scroll-snap-align:start}
+  :root:root:root body .clients-row li:last-child{padding-right:6px}
+}
+:root:root:root body .clients-count{white-space:nowrap;flex:none;display:inline-flex;align-items:center}
+
+/* Mobile: kartu statistik tidak menimpa kartu teks */
+@media(max-width:600px){
+  :root:root:root body .hero-intro{padding:14px 16px 15px}
+  :root:root:root body .hero-intro h1{margin-bottom:8px}
+  :root:root:root body .hero-actions{margin-top:12px}
+  :root:root:root body .hero-stats>div{margin:0 0 5px;padding:6px 11px}
+  :root:root:root body .hero-side{translate:0 -12px}
+}
