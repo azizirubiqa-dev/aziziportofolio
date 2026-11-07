@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Film, User, BookOpen, Briefcase, Trophy, LogOut, Plus, Pencil, Trash2, X, Loader2, Search, ChevronDown, Clapperboard, Megaphone, Menu, Upload, FileText, Phone, ChevronUp, Wrench, ListOrdered, Building2 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Film, User, BookOpen, Briefcase, Trophy, LogOut, Plus, Pencil, Trash2, X, Loader2, Search, ChevronDown, Clapperboard, Megaphone, Menu, Upload, FileText, Phone, ChevronUp, Wrench, ListOrdered, Building2 } from 'lucide-react';
 import { DEFAULT_TOOLS, DEFAULT_STEPS, DEFAULT_CLIENTS } from './toolkit.js';
 import { DEFAULT_TEXTS, TEXT_GROUPS } from './siteTexts.js';
 import { supabase } from './supabaseClient';
@@ -91,6 +91,33 @@ function UploadField({ label: fieldLabel, value, onChange, accept = 'image/*', p
   </label>;
 }
 
+// ---------- Notifikasi (modal tengah) untuk berhasil / gagal ----------
+let toastListener = null;
+const notify = (type, title, message = '') => { if (toastListener) toastListener({ id: Date.now() + Math.random(), type, title, message }); };
+const errText = e => (e && (e.message || String(e))) || 'Terjadi kesalahan tak dikenal.';
+const TABLE_LABEL = { projects: 'Karya', experience: 'Pengalaman', tools: 'Tool', process_steps: 'Langkah proses', clients: 'Brand', awards: 'Award', certificates: 'Sertifikat', categories: 'Kategori' };
+
+function ToastHost() {
+  const [t, setT] = useState(null);
+  useEffect(() => { toastListener = setT; return () => { toastListener = null; }; }, []);
+  useEffect(() => {
+    if (!t || t.type !== 'success') return;
+    const id = setTimeout(() => setT(null), 2000);
+    return () => clearTimeout(id);
+  }, [t]);
+  if (!t) return null;
+  const ok = t.type === 'success';
+  return <div className={`fixed inset-0 z-[300] flex items-center justify-center p-4 ${ok ? 'pointer-events-none' : 'bg-slate-900/40 backdrop-blur-sm'}`} onClick={() => !ok && setT(null)}>
+    <div role={ok ? 'status' : 'alertdialog'} aria-live="assertive" key={t.id} onClick={e => e.stopPropagation()} className="toast-pop pointer-events-auto relative w-full max-w-sm overflow-hidden rounded-2xl bg-white p-6 text-center shadow-2xl ring-1 ring-black/5">
+      <span className={`mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full ${ok ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>{ok ? <CheckCircle2 size={30}/> : <AlertTriangle size={28}/>}</span>
+      <h4 className="text-base font-bold text-slate-900">{t.title}</h4>
+      {t.message && <p className="mt-1 text-sm text-slate-500 break-words">{t.message}</p>}
+      {!ok && <button autoFocus className={`${btnPrimary} mt-4`} onClick={() => setT(null)}>Tutup</button>}
+      {ok && <span className="toast-bar absolute bottom-0 left-0 h-1 bg-emerald-500"/>}
+    </div>
+  </div>;
+}
+
 function SaveBar({ saving, saved, error, onSave }) {
   return <div className="mt-2 flex items-center gap-4">
     <button onClick={onSave} disabled={saving} className={btnPrimary}>{saving && <Loader2 size={15} className="animate-spin"/>}{saving ? 'Menyimpan…' : 'Simpan Perubahan'}</button>
@@ -110,7 +137,8 @@ function useSiteSettings() {
   }, []);
   const save = async partial => {
     const { data, error } = await supabase.from('site_settings').update(partial).eq('id', 1).select().single();
-    if (!error) setSettings(data);
+    if (!error) { setSettings(data); notify('success', 'Berhasil disimpan', 'Perubahan sudah tersimpan dan tampil di situs.'); }
+    else notify('error', 'Gagal menyimpan', errText(error));
     return { data, error };
   };
   return { settings, loading, save };
@@ -183,7 +211,7 @@ function TentangPage() {
     setSaving(true); setError('');
     const { error } = await save({ skills: skills.split(',').map(x => x.trim()).filter(Boolean), education: next.filter(e => (e.title || '').trim()) });
     setSaving(false);
-    if (error) { setError(error.message); await ask({ info: true, title: 'Gagal menghapus', message: error.message }); } else setSaved(true);
+    if (error) setError(error.message); else setSaved(true);
   };
   const onSave = async () => {
     setSaving(true); setError(''); setSaved(false);
@@ -254,23 +282,26 @@ function ListCRUD({ table, title, fields, renderSummary, renderMeta, renderThumb
     setBusy(true);
     const ao = a.sort_order ?? i, bo = b.sort_order ?? (i + d);
     const [sa, sb] = ao === bo ? [i + d, i] : [bo, ao];
-    await supabase.from(table).update({ sort_order: sa }).eq('id', a.id);
-    await supabase.from(table).update({ sort_order: sb }).eq('id', b.id);
-    setBusy(false); load();
+    const r1 = await supabase.from(table).update({ sort_order: sa }).eq('id', a.id);
+    const r2 = await supabase.from(table).update({ sort_order: sb }).eq('id', b.id);
+    setBusy(false);
+    if (r1.error || r2.error) { notify('error', 'Gagal mengubah urutan', errText(r1.error || r2.error)); return; }
+    notify('success', 'Urutan diperbarui', 'Urutan baru langsung tampil di situs.'); load();
   };
   const seedNow = async () => {
     setBusy(true);
     const { error } = await supabase.from(table).insert(seed.map((r, i) => ({ ...r, sort_order: i })));
     setBusy(false);
-    if (error) window.alert(error.message); else load();
+    if (error) notify('error', 'Gagal mengisi data awal', errText(error)); else { notify('success', 'Data awal berhasil dimasukkan', 'Sekarang Anda bisa mengubah, menambah, dan mengurutkannya.'); load(); }
   };
   const remove = async item => {
     const name = (renderSummary && renderSummary(item)) || 'item ini';
     const yes = await ask({ title: 'Hapus data ini?', message: `“${String(name).slice(0, 90)}” akan dihapus permanen dari database dan hilang dari situs. Tindakan ini tidak bisa dibatalkan.` });
     if (!yes) return;
     const { data, error } = await supabase.from(table).delete().eq('id', item.id).select('id');
-    if (error) { await ask({ info: true, title: 'Gagal menghapus', message: error.message }); return; }
-    if (!data || data.length === 0) { await ask({ info: true, title: 'Tidak bisa dihapus', message: 'Database menolak penghapusan (izin hapus untuk tabel ini belum ada). Jalankan “npm run db:migrate” di terminal, lalu coba lagi.' }); return; }
+    if (error) { notify('error', 'Gagal menghapus', errText(error)); return; }
+    if (!data || data.length === 0) { notify('error', 'Tidak bisa dihapus', 'Database menolak penghapusan (izin hapus untuk tabel ini belum ada). Jalankan “npm run db:migrate” di terminal, lalu coba lagi.'); return; }
+    notify('success', 'Berhasil dihapus', `${TABLE_LABEL[table] || 'Data'} sudah dihapus dari database dan situs.`);
     load();
   };
   if (loadError && setupSql) return <div className={`${card} border-amber-300 bg-amber-50`}>
@@ -436,7 +467,8 @@ function ItemForm({ table, fields, initial, emptyItem, onDone, extra }) {
     const payload = {}; fields.forEach(f => { payload[f.key] = form[f.key]; }); if (!form.id && extra) Object.assign(payload, extra);
     const res = form.id ? await supabase.from(table).update(payload).eq('id', form.id) : await supabase.from(table).insert(payload);
     setSaving(false);
-    if (res.error) setError(res.error.message); else onDone();
+    if (res.error) { setError(res.error.message); notify('error', 'Gagal menyimpan', errText(res.error)); }
+    else { notify('success', form.id ? 'Berhasil diperbarui' : 'Berhasil ditambahkan', `${TABLE_LABEL[table] || 'Data'} ${form.id ? 'sudah diperbarui.' : 'sudah ditambahkan.'} Perubahan langsung tampil di situs.`); onDone(); }
   };
   return <form onSubmit={submit} className={`${card} mb-5`}>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -764,13 +796,14 @@ function CategoryManager({ onChange }) {
     setAdding(true); setError('');
     const { error } = await supabase.from('categories').insert({ name: name.trim(), sort_order: categories.length });
     setAdding(false);
-    if (error) setError(error.message); else { setName(''); load(); }
+    if (error) { setError(error.message); notify('error', 'Gagal menambah kategori', errText(error)); } else { setName(''); notify('success', 'Kategori ditambahkan', `“${name.trim()}” sekarang bisa dipilih di Karya.`); load(); }
   };
   const remove = async cat => {
     const yes = await ask({ title: `Hapus kategori “${cat.name}”?`, message: 'Karya yang sudah memakai kategori ini TIDAK ikut terhapus. Hanya kategorinya yang dihapus dari daftar pilihan.' });
     if (!yes) return;
     const { data, error } = await supabase.from('categories').delete().eq('id', cat.id).select('id');
-    if (error || !data || !data.length) { await ask({ info: true, title: 'Tidak bisa dihapus', message: error ? error.message : 'Database menolak penghapusan (izin hapus belum ada). Jalankan “npm run db:migrate”, lalu coba lagi.' }); return; }
+    if (error || !data || !data.length) { notify('error', 'Tidak bisa dihapus', error ? errText(error) : 'Database menolak penghapusan (izin hapus belum ada). Jalankan “npm run db:migrate”, lalu coba lagi.'); return; }
+    notify('success', 'Kategori dihapus', `“${cat.name}” sudah dihapus dari daftar pilihan.`);
     load();
   };
   return <div className={`${card} mb-6`}>
@@ -915,8 +948,8 @@ function AdminApp() {
     return () => listener.subscription.unsubscribe();
   }, []);
   if (session === undefined) return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-400"><Loader2 className="animate-spin mr-2" size={18}/>Memuat…</div>;
-  if (!session) return <LoginForm/>;
-  return <Dashboard session={session}/>;
+  if (!session) return <><LoginForm/><ToastHost/></>;
+  return <><Dashboard session={session}/><ToastHost/></>;
 }
 
 createRoot(document.getElementById('root')).render(<AdminApp/>);
