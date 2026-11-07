@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef, useContext, useMemo, createContext } from 'react';
 import { createRoot } from 'react-dom/client';
+import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, MotionConfig, useScroll, useTransform, useSpring, useReducedMotion, useMotionValueEvent, useAnimationFrame, useInView, animate, useMotionValue } from 'framer-motion';
-import { ArrowUpRight, ArrowDown, ArrowRight, Play, X, Menu, Mail, Phone, MapPin, Instagram, Youtube, Download, Pause, Search, Plus, Minus, ChevronLeft, ChevronRight, ExternalLink, Sun, Moon } from 'lucide-react';
+import { MessageCircle, Briefcase, Lightbulb, ClipboardList, Scissors, Palette, Flag, ArrowUpRight, ArrowDown, ArrowRight, Play, X, Menu, Mail, Phone, MapPin, Instagram, Youtube, Download, Pause, Search, Plus, Minus, ChevronLeft, ChevronRight, ExternalLink, Sun, Moon } from 'lucide-react';
 import brands from './data/brands.json';
 import { supabase } from './supabaseClient';
+import { toHtml, summaryOf } from './experience.js';
 import './styles.css';
+import './ios.css';
 
 const MotionContext = createContext(true);
 const EASE = [0.22, 1, 0.36, 1];
-const DEFAULT_CATEGORIES = ['Semua', 'Film', 'Commercial'];
+const DEFAULT_CATEGORIES = ['All', 'Film', 'Commercial'];
 const FEATURED_KEYS = ['-xeDt_6XxJg', 'rfRnIAlNcvg'];
 const DEFAULT_EXPERIENCES = [
   { date_label: '2026 · SEKARANG', title: 'Freelance Creative', place: 'Film & branded content', description: 'Mengembangkan konsep dan naskah film pendek, serta memproduksi konten sinematik untuk brand café, fashion, dan hijab. Dari storytelling sampai penyelesaian visual.' },
@@ -34,12 +37,12 @@ const DEFAULT_AWARDS = [
 const DEFAULT_SETTINGS = {
   hero_topline: 'VIDEO EDITOR', hero_subtitle: 'FILM STORYTELLER',
   hero_role_line1: 'VIDEO', hero_role_line2: 'EDITOR',
-  hero_description: 'Merangkai cerita. Menciptakan realita. Saya mengubah ide menjadi visual yang terasa, dari frame pertama hingga terakhir.',
+  hero_description: 'Crafting stories. Creating reality. I turn ideas into visuals you can feel, from the first frame to the last.',
   hero_location: 'INDRAMAYU, INDONESIA',
-  stat_years: '3', stat_years_label: 'TAHUN DI INDUSTRI KREATIF',
-  stat_projects: '20', stat_projects_label: 'PROYEK FILM DAN CERITA',
+  stat_years: '3', stat_years_label: 'YEARS IN THE CREATIVE INDUSTRY',
+  stat_projects: '20', stat_projects_label: 'FILM & STORY PROJECTS',
   stat_awards: '10',
-  cv_url: './Asset/cv/Azizi_Editor.pdf.pdf',
+  cv_url: '',
   portrait_url: '',
   intro_text: 'Halo, saya Azizi, video editor dari Indramayu. Saya percaya setiap footage punya cerita yang layak dirangkai dengan rapi, dari potongan pertama sampai warna terakhir.',
   about_bio: 'Saya Azizi, video editor dari Indramayu. Saya bekerja di antara film, iklan, dan post-production, menggabungkan sisi kreatif dan teknis untuk membangun cerita yang punya rasa.',
@@ -50,12 +53,19 @@ const DEFAULT_SETTINGS = {
     { title: 'Courses & Workshops', meta: '', text: 'Videolabs · RifqiArt · Mindplace' },
   ],
   contact_email: 'hello.azizi@gmail.com',
-  contact_instagram_handle: '@dododididaw',
-  contact_instagram_url: 'https://www.instagram.com/dododididaw/',
-  contact_whatsapp: '6287786923444',
-  contact_phone_display: '+62 877-8692-3444',
-  contact_location: 'Indramayu, Indonesia',
+  contact_instagram_handle: '@ceritazizi',
+  contact_instagram_url: 'https://www.instagram.com/ceritazizi/',
+  contact_whatsapp: '6285726073213',
+  contact_phone_display: '+62 857-2607-3213',
+  contact_location: 'Yogyakarta, Indonesia',
 };
+
+// Foto lama beresolusi kecil (374x667) diganti versi 4K lokal. Hapus pemetaan ini setelah foto 4K diunggah lewat admin.
+const fixPortrait = u => (u && u.includes('1793960928054-Add_a_subheading-removebg-preview')) ? './Asset/img/azizi-portrait-4k.webp' : u;
+
+// Nilai kontak lama di database dipakai-ulang hanya jika belum diubah lewat admin (menu Kontak).
+const LEGACY_CONTACT = { contact_instagram_handle: '@dododididaw', contact_instagram_url: 'https://www.instagram.com/dododididaw/', contact_whatsapp: '6287786923444', contact_phone_display: '+62 877-8692-3444' };
+const freshContact = d => { const o = { ...d }; Object.keys(LEGACY_CONTACT).forEach(k => { if (!o[k] || o[k] === LEGACY_CONTACT[k]) o[k] = DEFAULT_SETTINGS[k]; }); return o; };
 
 function Reveal({ children, className = '', delay = 0, as = 'div' }) {
   const enabled = useContext(MotionContext);
@@ -66,7 +76,7 @@ function Reveal({ children, className = '', delay = 0, as = 'div' }) {
 function WipeReveal({ children, className = '', as = 'h2', delay = 0 }) {
   const enabled = useContext(MotionContext);
   const Component = motion[as];
-  return <Component className={className} initial={enabled ? { clipPath: 'inset(0 0 100% 0)' } : false} whileInView={{ clipPath: 'inset(0 0 0% 0)' }} viewport={{ once: true, amount: 0.5 }} transition={{ duration: enabled ? 0.85 : 0, delay, ease: EASE }}>{children}</Component>;
+  return <Component className={className} initial={enabled ? { opacity: 0, y: 26 } : false} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ duration: enabled ? 0.8 : 0, delay, ease: EASE }}>{children}</Component>;
 }
 
 function MediaImage({ src, alt, className = '', priority = false, ...props }) {
@@ -136,10 +146,10 @@ function Header({ enabled, onToggle, theme, onToggleTheme }) {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
   return <header className={`site-header${scrolled ? ' is-scrolled' : ''}`}>
-    <a className="wordmark" href="#home" aria-label="Azizi, beranda">AZIZI<span>®</span><i className="live-dot" aria-hidden="true"/></a>
-    <nav className="desktop-nav" aria-label="Navigasi utama">{[['portfolio', 'Karya'], ['awards', 'Awards'], ['about', 'Tentang'], ['experience', 'Perjalanan'], ['contact', 'Kontak']].map(([id, label]) => <a key={id} href={`#${id}`} className={active === id ? 'active' : ''}>{label}</a>)}</nav>
-    <div className="header-actions"><button className="motion-toggle" onClick={onToggle} aria-label={enabled ? 'Jeda animasi' : 'Aktifkan animasi'} aria-pressed={!enabled}>{enabled ? <Pause size={13} /> : <Play size={13} />}<span>Motion {enabled ? 'on' : 'off'}</span></button><button className="theme-toggle" onClick={onToggleTheme} aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'} aria-pressed={theme === 'light'}>{theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}<span>{theme === 'dark' ? 'Terang' : 'Gelap'}</span></button><Magnetic href="#contact" className="header-contact"><span className="header-contact-label">Let’s talk</span><ArrowUpRight size={16} /></Magnetic><button className="menu-toggle icon-button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-menu" aria-label={open ? 'Tutup menu' : 'Buka menu'}>{open ? <X /> : <Menu />}</button></div>
-    <AnimatePresence>{open && <motion.nav id="mobile-menu" className="mobile-menu" aria-label="Navigasi mobile" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>{[['home', 'Beranda'], ['portfolio', 'Karya'], ['awards', 'Awards'], ['about', 'Tentang'], ['experience', 'Perjalanan'], ['contact', 'Kontak']].map(([id, label], i) => <a key={id} href={`#${id}`} onClick={() => setOpen(false)}><span>0{i + 1}</span>{label}<ArrowUpRight size={18} /></a>)}</motion.nav>}</AnimatePresence>
+    <a className="wordmark" href="#home" aria-label="Azizi, beranda">Azizi<i className="live-dot" aria-hidden="true"/></a>
+    <nav className="desktop-nav" aria-label="Main navigation">{[['portfolio', 'Work'], ['about', 'Process'], ['experience', 'Journey'], ['contact', 'Contact']].map(([id, label]) => <a key={id} href={`#${id}`} className={active === id ? 'active' : ''}>{label}</a>)}</nav>
+    <div className="header-actions"><button className="motion-toggle" onClick={onToggle} aria-label={enabled ? 'Pause animations' : 'Enable animations'} aria-pressed={!enabled}>{enabled ? <Pause size={13} /> : <Play size={13} />}<span>Motion {enabled ? 'on' : 'off'}</span></button><button className="theme-toggle" onClick={onToggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} aria-pressed={theme === 'dark'}><span className="theme-icon"><Sun className="i-sun" size={16}/><Moon className="i-moon" size={16}/></span></button><Magnetic href="#contact" className="header-contact"><span className="header-contact-label">Let’s talk</span><ArrowUpRight size={16} /></Magnetic><button className="menu-toggle icon-button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-menu" aria-label={open ? 'Close menu' : 'Open menu'}>{open ? <X /> : <Menu />}</button></div>
+    <AnimatePresence>{open && <motion.nav id="mobile-menu" className="mobile-menu" aria-label="Mobile navigation" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>{[['home', 'Home'], ['portfolio', 'Work'], ['about', 'Process'], ['experience', 'Journey'], ['contact', 'Contact']].map(([id, label], i) => <a key={id} href={`#${id}`} onClick={() => setOpen(false)}><span>0{i + 1}</span>{label}<ArrowUpRight size={18} /></a>)}</motion.nav>}</AnimatePresence>
   </header>;
 }
 
@@ -163,6 +173,18 @@ function CountUp({ to, duration = 1.4, delay = 0.3 }) {
   return <span ref={ref}>{value}</span>;
 }
 
+const KW_A = /^(short-form videos?|ugc|high-converting|footage|cerita|film|iklan)$/i;
+const KW_RE = /(\*\*.+?\*\*|short-form videos?|UGC|high-converting|move fast|viewer retention|visual pacing|clean execution|potongan pertama|warna terakhir|setiap footage)/gi;
+function RichText({ text }) {
+  if (!text) return null;
+  return text.split(KW_RE).map((t, i) => {
+    if (!t) return null;
+    if (i % 2 === 0) return <React.Fragment key={i}>{t}</React.Fragment>;
+    const manual = t.startsWith('**'), word = manual ? t.slice(2, -2) : t;
+    return <mark key={i} className={manual || KW_A.test(word) ? 'hl-a' : 'hl-b'}>{word}</mark>;
+  });
+}
+
 function Hero({ onProject, featured, settings }) {
   const ref = useRef(null);
   const enabled = useContext(MotionContext);
@@ -184,20 +206,19 @@ function Hero({ onProject, featured, settings }) {
     const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
     img.style.setProperty('--ry', `${x * 14}deg`); img.style.setProperty('--rx', `${-y * 8}deg`);
   }} onMouseLeave={e => { const img = e.currentTarget.querySelector('.hero-portrait img'); if (img) { img.style.setProperty('--ry', '0deg'); img.style.setProperty('--rx', '0deg'); } }}>
-    <div className="hero-top"><span>{settings.hero_topline}<br/><span className="muted">{settings.hero_subtitle}</span></span><span className="availability"><i />AVAILABLE FOR COLLABORATION</span></div>
-    <motion.div className="hero-title display" aria-hidden="true" style={enabled ? { y: titleY } : {}}><SplitText text="PORTFOLIO" delay={0.1} stagger={0.05} rise={50} rotate={6} blur={10} duration={0.9} shine/></motion.div>
-    <div className="hero-glow" aria-hidden="true" />
-    <motion.div className="hero-portrait" style={enabled ? { y: portraitCombinedY, scale: portraitScale } : {}}>{settings.portrait_url && <img src={settings.portrait_url} alt="Azizi mengenakan blazer hitam dengan pencahayaan studio merah" width="1024" height="1536" fetchPriority="high" />}</motion.div>
+    <div className="hero-top"><span>{settings.hero_topline}<br/><span className="muted">{settings.hero_subtitle}</span></span></div>
+    <motion.div className="hero-title display" aria-hidden="true" style={enabled ? { y: titleY } : {}}><SplitText text="Portfolio" delay={0.1} stagger={0.05} rise={50} rotate={6} blur={10} duration={0.9} shine/></motion.div>
+    <motion.div className="hero-portrait" style={enabled ? { y: portraitCombinedY, scale: portraitScale } : {}}>{settings.portrait_url && <img src={settings.portrait_url} alt="Portrait of Azizi" width="1024" height="1536" fetchPriority="high" />}</motion.div>
     <motion.div className="hero-intro" style={enabled ? { y: copyY } : {}} initial={enabled ? { opacity: 0, x: -35 } : false} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.9, delay: 0.35, ease: EASE }}>
-      <SplitText as="p" className="handwriting" text="Hello, I’m" delay={0.4} stagger={0.035}/><h1 className="display"><SplitText as="span" text="AZIZI" delay={0.65} stagger={0.045}/><motion.span className="name-dot" initial={enabled ? { opacity: 0, y: 26, rotateZ: 10, filter: 'blur(6px)' } : false} animate={{ opacity: 1, y: 0, rotateZ: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, delay: 0.65 + 5 * 0.045, ease: [0.22, 1, 0.36, 1] }}>.</motion.span></h1><p className="hero-role">{settings.hero_role_line1}<br />{settings.hero_role_line2}</p><p className="hero-description">{settings.hero_description}</p>
-      <Magnetic href="#portfolio" className="primary-link">Lihat karya saya <ArrowDown size={17}/></Magnetic>
+      <SplitText as="p" className="handwriting" text="Hi, I’m" delay={0.4} stagger={0.035}/><h1 className="display"><SplitText as="span" text="Azizi" delay={0.65} stagger={0.045}/><motion.span className="name-dot" initial={enabled ? { opacity: 0, y: 26, rotateZ: 10, filter: 'blur(6px)' } : false} animate={{ opacity: 1, y: 0, rotateZ: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, delay: 0.65 + 5 * 0.045, ease: [0.22, 1, 0.36, 1] }}>.</motion.span></h1><p className="hero-role"><span>{settings.hero_role_line1}</span><span>{settings.hero_role_line2}</span></p><p className="hero-description"><RichText text={settings.hero_description}/></p><div className="hero-skills">{(settings.skills || []).map(t => <span key={t}>{t}</span>)}</div>
+      <div className="hero-actions"><Magnetic href="#portfolio" className="primary-link">View work <ArrowDown size={16}/></Magnetic>{settings.cv_url && <a className="secondary-link" href={settings.cv_url} target="_blank" rel="noopener noreferrer">View resume</a>}</div>
       <span className="hero-location"><MapPin size={12} /> {settings.hero_location}</span>
     </motion.div>
     <motion.div className="hero-side" initial={enabled ? { opacity: 0, x: 30 } : false} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1, delay: 0.55, ease: EASE }}>
-      <div className="hero-manifesto"><span className="crosshair" aria-hidden="true">✳</span><p>Every frame.<br />A different feeling.</p></div>
-      <div className="hero-stats"><div><span className="display"><CountUp to={parseInt(settings.stat_years, 10) || 0} delay={0.2}/><span>+</span></span><p>{settings.stat_years_label}</p></div><div><span className="display"><CountUp to={parseInt(settings.stat_projects, 10) || 0} delay={0.35}/><span>+</span></span><p>{settings.stat_projects_label}</p></div><div className="hero-award-stat"><span className="display"><CountUp to={parseInt(settings.stat_awards, 10) || 0} delay={0.5}/><span>+</span></span><a href="#awards" aria-label="Lihat penghargaan Azizi">AWARDS WON<ArrowUpRight size={12}/></a></div><a href={settings.cv_url} download><Download size={16}/><span>DOWNLOAD CV</span></a></div>
+      
+      <div className="hero-stats">{[[2, 'Years in creative industry', true], [20, 'Creative projects', true], [10, 'Achievements', true]].map(([n, label], i) => <div key={label}><span className="display"><CountUp to={n} delay={0.2 + i * 0.15}/><span>+</span></span><p>{label}</p></div>)}<div><span className="display stat-global">Global</span><p>International clients</p></div>{settings.cv_url && <a href={settings.cv_url} target="_blank" rel="noopener noreferrer"><Download size={16}/><span>View resume</span></a>}</div>
     </motion.div>
-    <div className="hero-bottom"><button className="reel-button" onClick={() => featured[0] && onProject(featured[0])}><span className="play-circle"><Play size={12} fill="currentColor" /></span>PLAY SHOWREEL<span className="muted">FILM / VIDEO</span></button><span className="hero-scroll">SCROLL TO DISCOVER <ArrowDown size={13}/></span><span className="edition">SELECTED WORK / 2022–2026</span></div>
+    <div className="hero-bottom"><span className="hero-scroll">Scroll to explore <ArrowDown size={13}/></span></div>
   </section>;
 }
 
@@ -215,9 +236,9 @@ function ProjectCard({ project, index, onOpen }) {
     rotateX.set(((e.clientY - r.top) / r.height - 0.5) * -10);
   };
   const untilt = () => { rotateX.set(0); rotateY.set(0); };
-  const video = ['youtube', 'drive'].includes(project.type);
+  const video = ['youtube', 'drive', 'video'].includes(project.type);
   return <motion.article ref={ref} className="project-card" layout initial={enabled ? { opacity: 0, y: 32, scale: 0.96 } : false} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: false, amount: 0.08 }} transition={{ duration: enabled ? 0.6 : 0, delay: (index % 3) * 0.06, ease: EASE }} exit={{ opacity: 0, scale: 0.96 }}>
-    <motion.button className="project-open" style={enabled ? { rotateX, rotateY, transformPerspective: 800 } : {}} onPointerMove={tilt} onPointerLeave={untilt} onClick={() => onOpen(project)} aria-label={`Lihat ${project.title}`}><motion.div className="project-picture" style={enabled ? { y } : {}}><MediaImage src={project.image} alt={project.title}/></motion.div><span className="project-type">{project.type === 'render' ? '3D BREAKDOWN' : video ? 'FILM / VIDEO' : project.type === 'website' ? 'WEBSITE' : 'STILL / IMAGE'}</span><span className="project-hover">{video ? <Play fill="currentColor" size={18}/> : <ArrowUpRight size={22}/>}</span><span className="project-frame" aria-hidden="true" /></motion.button>
+    <motion.button className="project-open" style={enabled ? { rotateX, rotateY, transformPerspective: 800 } : {}} onPointerMove={tilt} onPointerLeave={untilt} onClick={() => onOpen(project)} aria-label={`View ${project.title}`}><motion.div className="project-picture" style={enabled ? { y } : {}}><MediaImage src={project.image} alt={project.title}/></motion.div><span className="project-type">{project.type === 'render' ? '3D BREAKDOWN' : video ? 'FILM / VIDEO' : project.type === 'website' ? 'WEBSITE' : 'STILL / IMAGE'}</span><span className="project-hover">{video ? <Play fill="currentColor" size={18}/> : <ArrowUpRight size={22}/>}</span><span className="project-frame" aria-hidden="true" /></motion.button>
     <button className="project-caption" onClick={() => onOpen(project)}><span className="project-number display">{String(index + 1).padStart(2, '0')}</span><span><h3>{project.title}</h3><span className="project-category">{project.category}{project.year ? ` / ${project.year}` : ''}</span></span><ArrowUpRight size={20}/></button>
   </motion.article>;
 }
@@ -249,242 +270,90 @@ function BrandStrip() {
     </div></Reveal>;
 }
 
-const TOOLS = [['pr', 'Premiere Pro'], ['ae', 'After Effects'], ['lr', 'Lightroom'], ['cc', 'CapCut']];
-const TOOL_META = { pr: ['#a78bfa', 'Premiere Pro', 'CUTTING & TIMELINE'], ae: ['#c4a8ff', 'After Effects', 'MOTION & VFX'], lr: ['#31a8ff', 'Lightroom', 'COLOR & PHOTO GRADE'], cc: ['#22e1d6', 'CapCut', 'QUICK CUTS & REELS'] };
-function ToolOrbit() {
+const CLIENTS = [['vizard', 'Vizard', 111], ['agent-opus', 'Agent Opus', 131], ['twizl', 'Twizl', 124], ['cimb-niaga-syariah', 'CIMB Niaga Syariah', 142], ['trends-masterhooks', 'Trends by Masterhooks', 200]];
+function ClientsStrip() {
   const enabled = useContext(MotionContext);
-  const box = useRef(null), ring = useRef(null), back = useRef(null), front = useRef(null);
-  const refs = useRef([]);
-  const hovered = useRef(-1), entered = useRef(-1), label = useRef(null);
-  useEffect(() => {
-    const fKey = TOOLS.map(() => ''), hv = TOOLS.map(() => 0), pos = TOOLS.map(() => ({ x: 0, y: 0, f: false }));
-    const N = TOOLS.length, GAP = 0.28, DUR = 3.8, TOTAL = DUR + GAP * (N - 1);
-    const sm = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
-    const trails = TOOLS.map(() => []);
-    let parts = [], waves = [], raf, start = enabled ? null : -1e9, spin = 0, last = performance.now(), landed = false;
-    let io;
-    if (enabled && box.current) {
-      io = new IntersectionObserver(([e]) => { if (e.isIntersecting && start === null) { start = performance.now() + 500; io.disconnect(); } }, { threshold: 0.35 });
-      io.observe(box.current);
-    }
-    const frame = now => {
-      const dt = Math.min(now - last, 34); last = now;
-      const bx = box.current; if (!bx) return;
-      const W = bx.clientWidth, H = bx.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      const ctxs = [back.current, front.current].map(c => {
-        if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); }
-        const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); g.lineCap = 'round'; return g;
-      });
-      if (hovered.current < 0) spin += dt * 0.0004;
-      const seq = start === null ? -1 : (now - start) / 1000;
-      const Rx = W * 0.27, Ry = W * 0.27, cx = W * 0.52, cy = W * 0.56, rx0 = W * 0.42, ry0 = W * 0.17, yStart = H * 0.97;
-      const ringA = Math.max(0, Math.min(1, (seq - TOTAL * 0.55) / 1.2));
-      if (ring.current) {
-        const st = ring.current.style; st.left = `${cx}px`; st.top = `${cy}px`; st.width = `${Rx * 2}px`; st.height = `${Ry * 2}px`;
-        if (!landed && seq >= TOTAL) {
-          landed = true; ring.current.classList.add('is-landed'); waves.push({ x: cx, y: cy, life: 0 }, { x: cx, y: cy, life: -180 });
-          for (let k = 0; k < 70; k++) { const a = Math.random() * Math.PI * 2, v = 0.15 + Math.random() * 0.45; parts.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: 700 + Math.random() * 700, s: 4 + Math.random() * 7, f: false, gold: Math.random() < .5, t: k % 3 }); }
-        }
-      }
-      TOOLS.forEach((_, i) => {
-        const el = refs.current[i]; if (!el) return;
-        const u = Math.max(0, Math.min(1, (seq - i * GAP) / DUR));
-        if (u <= 0) { el.style.opacity = '0'; return; }
-        const e = sm(u), inv = 1 - e;
-        const th = spin * e + i * (Math.PI / 2) * e - 5 * Math.PI * inv;
-        const rx = Rx + (rx0 - Rx) * inv, ry = ry0 + (Ry - ry0) * e * e * e;
-        const x = cx + Math.cos(th) * rx, y = cy + (yStart - cy) * inv + Math.sin(th) * ry;
-        const d = Math.sin(th) * (1 - e * e * e), isFront = d > 0.1;
-        const meta = TOOL_META[TOOLS[i][0]], col = meta[0], hh = (hv[i] += ((hovered.current === i ? 1 : 0) - hv[i]) * (1 - Math.exp(-dt / 70)));
-        pos[i].x = x; pos[i].y = y; pos[i].f = isFront;
-        el.style.zIndex = hh > 0.02 ? 5 : (isFront ? 3 : 0);
-        el.style.opacity = String(Math.min(1, u * 10));
-        el.style.transform = `translate3d(${x}px,${y}px,0) translate(-50%,-50%) scale(${(1 + 0.22 * d) * (0.6 + 0.4 * Math.min(1, u * 6)) * (1 + 0.5 * hh + 0.06 * hh * Math.sin(now * 0.02))}) rotate(${inv * 540 + hh * Math.sin(now * 0.012) * 12}deg)`;
-        const fk = hh > 0.03 ? col : 'n'; if (fKey[i] !== fk) { fKey[i] = fk; el.style.filter = fk === 'n' ? 'drop-shadow(0 0 14px rgba(239,65,81,.7))' : `drop-shadow(0 0 24px ${col}) drop-shadow(0 0 6px ${col}aa)`; }
-        const tr = trails[i]; tr.push({ x, y, f: isFront }); if (tr.length > 40) tr.shift();
-        if (enabled && entered.current === i) {
-          entered.current = -1;
-          waves.push({ x, y, life: 0, r: 40, col }, { x, y, life: -160, r: 40, col }, { x, y, life: -320, r: 40, col });
-          for (let k = 0; k < 44; k++) { const a = (k / 44) * Math.PI * 2 + Math.random() * 0.3, v = 0.12 + Math.random() * 0.4; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: 600 + Math.random() * 600, s: 4 + Math.random() * 8, f: true, col, t: k % 5 === 4 ? 4 : k % 3, tw: Math.random() * 6 }); }
-        }
-        if (enabled && hh > 0.5 && hovered.current === i) {
-          for (let k = 0; k < 4; k++) { const a = Math.random() * Math.PI * 2, r0 = 30 + Math.random() * 14; parts.push({ x: x + Math.cos(a) * r0, y: y + Math.sin(a) * r0, vx: Math.cos(a) * 0.05, vy: Math.sin(a) * 0.05 - 0.07, life: 0, max: 500 + Math.random() * 500, s: 6 + Math.random() * 10, f: true, col, t: k === 0 ? 3 : (k === 1 ? 4 : k % 3), tw: Math.random() * 6 }); }
-          const g = ctxs[1], tm = now * 0.003; g.save(); g.translate(x, y); g.strokeStyle = col; g.lineWidth = 2.5; g.setLineDash([10, 8]); g.rotate(tm); g.beginPath(); g.arc(0, 0, 54, 0, Math.PI * 2); g.stroke(); g.setLineDash([3, 10]); g.rotate(-tm * 2.4); g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 66, 0, Math.PI * 2); g.stroke(); g.restore();
-        }
-        if (enabled) {
-          const nf = u < 1 ? 2 : (Math.random() < 0.35 ? 1 : 0), ns = u < 1 ? 2 : (Math.random() < 0.2 ? 1 : 0);
-          for (let k = 0; k < nf; k++) parts.push({ x: x + (Math.random() - .5) * 26, y: y + (Math.random() - .5) * 20, vx: (Math.random() - .5) * 0.05, vy: -0.05 - Math.random() * 0.1, life: 0, max: 450 + Math.random() * 450, s: 9 + Math.random() * 12, f: isFront, t: 3 });
-          for (let k = 0; k < ns; k++) parts.push({ x: x + (Math.random() - .5) * 90, y: y + (Math.random() - .5) * 90, vx: (Math.random() - .5) * 0.03, vy: (Math.random() - .5) * 0.03, life: 0, max: 700 + Math.random() * 700, s: 6 + Math.random() * 9, f: isFront, t: 4, tw: Math.random() * 6 });
-          if (u > 0 && u < 1) { const g = ctxs[isFront ? 1 : 0], r = 46 + 30 * inv, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(255,120,90,${0.35 * inv + 0.1})`); gr.addColorStop(1, 'rgba(239,65,81,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
-        }
-      });
-      if (ringA > 0) {
-        { const g = ctxs[0]; g.save(); g.setLineDash([7, 9]); g.strokeStyle = `rgba(239,65,81,${0.6 * ringA})`; g.lineWidth = 1.5; g.beginPath(); g.ellipse(cx, cy, Rx, Ry, 0, 0, Math.PI * 2); g.stroke(); g.restore(); }
-      }
-      if (enabled) {
-        trails.forEach((tr, i) => {
-          const u = Math.max(0, Math.min(1, (seq - i * GAP) / DUR)), moving = 1 - sm(u) * 0.55;
-          for (let j = 1; j < tr.length; j++) {
-            const f = j / tr.length, g = ctxs[tr[j].f ? 1 : 0];
-            g.strokeStyle = `hsla(${(355 + 45 * f) % 360},95%,58%,${f * 0.8 * moving})`;
-            g.lineWidth = (2 + 11 * f) * (0.5 + 0.5 * moving);
-            g.beginPath(); g.moveTo(tr[j - 1].x, tr[j - 1].y); g.lineTo(tr[j].x, tr[j].y); g.stroke();
-          }
-        });
-        if (parts.length > 240) parts.splice(0, parts.length - 240);
-        parts = parts.filter(p => (p.life += dt) < p.max);
-        parts.forEach(p => {
-          p.x += p.vx * dt; p.y += p.vy * dt;
-          const k = 1 - p.life / p.max, g = ctxs[p.f ? 1 : 0], z = p.s * (0.4 + 0.6 * k);
-          g.save(); g.translate(p.x, p.y); g.globalAlpha = k;
-          g.fillStyle = g.strokeStyle = p.col || (p.gold ? '#ffcf4d' : '#ef4151');
-          if (p.t === 3) { const r = Math.max(2, p.s * k), gr = g.createRadialGradient(0, 0, 0, 0, 0, r); gr.addColorStop(0, `rgba(255,236,140,${0.95})`); gr.addColorStop(0.4, 'rgba(255,150,40,.85)'); gr.addColorStop(1, 'rgba(230,40,30,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(0, 0, r * 0.7, r * 1.25, 0, 0, Math.PI * 2); g.fill(); }
-          else if (p.t === 4) { const tw = Math.abs(Math.sin(p.life * 0.012 + p.tw)), r = p.s * tw; g.globalAlpha = k * (0.5 + 0.5 * tw); g.fillStyle = p.col ? '#ffffff' : '#fff6c8'; g.beginPath(); for (let q = 0; q < 8; q++) { const rr = q % 2 ? r * 0.22 : r, an = q * Math.PI / 4 - Math.PI / 2; g.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); } g.closePath(); g.fill(); g.strokeStyle = p.col || '#ffb000'; g.lineWidth = 1; g.stroke(); }
-          else if (p.t === 0) { g.rotate(Math.PI / 4 + p.life * 0.005); g.fillRect(-z / 2, -z / 2, z, z); }
-          else if (p.t === 1) { g.rotate(p.life * 0.004); g.lineWidth = 2; g.beginPath(); g.moveTo(-z * 1.4, 0); g.lineTo(z * 1.4, 0); g.moveTo(0, -z * 1.4); g.lineTo(0, z * 1.4); g.stroke(); }
-          else { g.rotate(p.life * 0.003); g.beginPath(); g.moveTo(-z * .6, -z * .8); g.lineTo(z, 0); g.lineTo(-z * .6, z * .8); g.closePath(); g.fill(); }
-          g.restore();
-        });
-        waves = waves.filter(w => (w.life += dt) < 1100);
-        waves.forEach(w => {
-          if (w.life < 0) return;
-          const k = w.life / 1100, g = ctxs[w.r ? 1 : 0];
-          g.save(); g.globalAlpha = 1 - k; g.strokeStyle = w.col || '#ef4151'; g.lineWidth = 3 * (1 - k) + 1; g.beginPath();
-          if (w.r) { g.arc(w.x, w.y, w.r + 90 * k, 0, Math.PI * 2); }
-          else g.ellipse(w.x, w.y, Rx * (0.9 + 1.2 * k), Ry * (0.9 + 1.6 * k), 0, 0, Math.PI * 2);
-          g.stroke(); g.restore();
-        });
-      }
-      const hi = hovered.current;
-      if (label.current) {
-        if (hi >= 0) { const m = TOOL_META[TOOLS[hi][0]]; label.current.style.left = `${pos[hi].x}px`; label.current.style.top = `${pos[hi].y + 62}px`; label.current.style.setProperty('--c', m[0]); if (label.current.dataset.i !== String(hi)) { label.current.dataset.i = String(hi); label.current.innerHTML = `<b>${m[1]}</b><i>${m[2]}</i>`; } label.current.classList.add('on'); }
-        else label.current.classList.remove('on');
-      }
-      if (enabled) raf = requestAnimationFrame(frame);
-    };
-    frame(performance.now());
-    if (enabled) raf = requestAnimationFrame(frame);
-    const onResize = () => frame(performance.now());
-    window.addEventListener('resize', onResize);
-    return () => { cancelAnimationFrame(raf); io && io.disconnect(); window.removeEventListener('resize', onResize); };
-  }, [enabled]);
-  return <div className="intro-orbit" ref={box} role="list" aria-label="Software yang digunakan">
-    <canvas ref={back} className="orbit-canvas orbit-canvas-back" aria-hidden="true"/>
-    <span className="intro-orbit-ring" ref={ring} aria-hidden="true"/>
-    {TOOLS.map(([file, name], i) => <img key={file} ref={el => refs.current[i] = el} role="listitem" className="orbit-tool" src={`./Asset/svg/${file}.svg`} alt={name} title={name} width="44" height="44" onMouseEnter={() => { hovered.current = i; entered.current = i; }} onMouseLeave={() => { hovered.current = -1; }}/>)}
-    <div className="orbit-label" ref={label} aria-hidden="true"/>
-    <canvas ref={front} className="orbit-canvas orbit-canvas-front" aria-hidden="true"/>
-  </div>;
-}
-
-const SIG_LINE = 'M24 114 C80 122 160 118 236 104';
-function Signature() {
-  const enabled = useContext(MotionContext);
-  const root = useRef(null), pencil = useRef(null), wipe = useRef(null), line = useRef(null);
-  const state = useRef({ raf: 0, running: false, seen: false });
-  const setDone = () => { if (wipe.current) wipe.current.setAttribute('width', '330'); if (line.current) { line.current.style.strokeDasharray = 'none'; line.current.style.strokeDashoffset = '0'; } if (pencil.current) pencil.current.style.opacity = 0; };
-  const play = React.useCallback(() => {
-    const st = state.current, ln = line.current;
-    if (st.running || !ln || !wipe.current) return;
-    st.running = true;
-    const L = ln.getTotalLength(), T1 = 2700, T2 = 3500, t0 = performance.now();
-    wipe.current.setAttribute('width', '0'); ln.style.strokeDasharray = L; ln.style.strokeDashoffset = L;
-    const tick = now => {
-      const t = now - t0; let tip = null;
-      if (t < T1) {
-        const k = t / T1, x = 12 + 250 * (k + Math.sin(k * Math.PI * 6) * 0.015);
-        wipe.current.setAttribute('width', String(Math.max(0, x)));
-        tip = { x, y: 66 + Math.sin(k * Math.PI * 9) * 26 + (1 - Math.min(1, k * 6)) * 20 };
-      } else {
-        wipe.current.setAttribute('width', '330');
-        const k = Math.min(1, (t - T1) / (T2 - T1));
-        ln.style.strokeDashoffset = String(L * (1 - k));
-        if (k < 1) tip = ln.getPointAtLength(L * k);
-      }
-      if (pencil.current) {
-        if (tip) { pencil.current.setAttribute('transform', `translate(${tip.x} ${tip.y}) rotate(${40 + Math.sin(t * 0.02) * 5})`); pencil.current.style.opacity = 1; }
-        else pencil.current.style.opacity = 0;
-      }
-      if (t < T2) st.raf = requestAnimationFrame(tick); else { st.running = false; setDone(); }
-    };
-    st.raf = requestAnimationFrame(tick);
-  }, []);
-  useEffect(() => {
-    if (!enabled) { setDone(); return; }
-    if (wipe.current) wipe.current.setAttribute('width', '0');
-    if (line.current) { const l = line.current.getTotalLength(); line.current.style.strokeDasharray = l; line.current.style.strokeDashoffset = l; }
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting && !state.current.seen) { state.current.seen = true; setTimeout(play, 500); io.disconnect(); } }, { threshold: 0.6 });
-    io.observe(root.current);
-    return () => { io.disconnect(); cancelAnimationFrame(state.current.raf); state.current.running = false; };
-  }, [enabled, play]);
-  return <svg ref={root} className="intro-sig" viewBox="0 0 320 130" fill="none" role="img" aria-label="Tanda tangan Azizi" onMouseEnter={() => enabled && play()}>
-    <defs><mask id="sig-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="330" height="130"><rect ref={wipe} x="0" y="0" width="330" height="130" fill="#fff"/></mask></defs>
-    <text x="14" y="96" className="sig-text" mask="url(#sig-mask)">Azizi</text>
-    <path ref={line} d={SIG_LINE} stroke="currentColor" strokeWidth="3.2" strokeLinecap="round"/>
-    <g ref={pencil} style={{ opacity: 0 }} className="sig-pencil">
-      <polygon points="0,0 -2.8,-7.5 2.8,-7.5" fill="#e8c9a0"/><polygon points="0,0 -1,-2.6 1,-2.6" fill="#2b2b2b"/>
-      <rect x="-2.8" y="-28" width="5.6" height="20.5" fill="#ef4151"/><rect x="-2.8" y="-31" width="5.6" height="3" fill="#c9c9c9"/><rect x="-2.8" y="-35" width="5.6" height="4" rx="1.6" fill="#f2a6ad"/>
-    </g>
-  </svg>;
-}
-
-function Intro({ settings }) {
-  const ref = useRef(null);
-  return <section id="intro" className="intro section-wrap" ref={ref}>
-    <span className="intro-ring" aria-hidden="true"/>
-    <div className="intro-photo" onMouseMove={e => {
-      const inner = e.currentTarget.firstChild; const r = e.currentTarget.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
-      inner.style.setProperty('--ry', `${x * 16}deg`); inner.style.setProperty('--rx', `${-y * 16}deg`);
-      inner.style.setProperty('--gx', `${(x + 0.5) * 100}%`); inner.style.setProperty('--gy', `${(y + 0.5) * 100}%`);
-    }} onMouseLeave={e => { const i = e.currentTarget.firstChild; i.style.setProperty('--ry', '0deg'); i.style.setProperty('--rx', '0deg'); }}>
-      <ToolOrbit/>
-      <div className="intro-photo-inner">
-        {settings.portrait_url && <img src={settings.portrait_url} alt="Azizi" loading="lazy" width="800" height="1066"/>}
-      </div>
-    </div>
-    <Reveal className="intro-text">
-      <span className="eyebrow intro-eyebrow"><i/>PERKENALAN SINGKAT</span>
-      <span className="intro-hello">Hello, nice to meet you</span>
-      <h2 className="display">SIAPA ITU AZIZI<span className="accent">?</span></h2>
-      <p className="intro-lead">{settings.intro_text}</p>
-      <Signature/>
-      <div className="skill-tags intro-skills">{(settings.skills || []).map(t => <span key={t}>{t}</span>)}</div>
-      <div className="intro-actions"><a className="intro-cta" href="#portfolio">LIHAT KARYA SAYA <ArrowUpRight size={16}/></a></div>
-    </Reveal>
+  return <section className="clients-section section-wrap" aria-label="Clients">
+    <Reveal className="section-heading"><div><span className="eyebrow">Clients</span><WipeReveal as="h2">Brands I’ve worked with<span className="accent">.</span></WipeReveal></div><span className="clients-count">{CLIENTS.length} brands</span></Reveal>
+    <ul className="clients-row">{CLIENTS.map(([f, n, w], i) => <motion.li key={f} style={{ '--d': `${i * 0.7}s` }} {...(enabled ? { initial: { opacity: 0, y: 30, rotate: -3 }, whileInView: { opacity: 1, y: 0, rotate: 0 }, viewport: { once: true, amount: 0.5 }, transition: { type: 'spring', stiffness: 200, damping: 16, delay: i * 0.1 } } : {})}>
+      <span className="client-logo"><img src={`./Asset/img/clients/${f}.png`} alt={n} title={n} loading="lazy" height="44" width={w}/></span>
+    </motion.li>)}</ul>
   </section>;
 }
 
 function Portfolio({ onProject, archive, featured, loading, categories }) {
-  const [category, setCategory] = useState('Semua');
+  const [category, setCategory] = useState('All');
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [limit, setLimit] = useState(9);
-  const results = archive.filter(p => (category === 'Semua' || p.category === category) && `${p.title} ${p.category} ${p.role}`.toLowerCase().includes(query.toLowerCase()));
-  const projects = expanded || category !== 'Semua' || query ? results.slice(0, limit) : featured;
+  const results = archive.filter(p => (category === 'All' || p.category === category) && `${p.title} ${p.category} ${p.role}`.toLowerCase().includes(query.toLowerCase()));
+  const projects = expanded || category !== 'All' || query ? results.slice(0, limit) : featured;
   return <section id="portfolio" className="portfolio section-wrap">
-    <Reveal className="section-heading"><div><span className="eyebrow">01 / SELECTED WORK</span><WipeReveal as="h2">KARYA YANG BICARA<span className="accent">.</span></WipeReveal></div><button className="text-link" onClick={() => { if (expanded) { setExpanded(false); setCategory('Semua'); setQuery(''); } else { setExpanded(true); setLimit(9); } }}>{expanded ? 'KARYA PILIHAN' : 'SEMUA KARYA'}<ArrowRight size={21}/></button></Reveal>
+    <Reveal className="section-heading"><div><span className="eyebrow">Selected work</span><WipeReveal as="h2">Work that speaks<span className="accent">.</span></WipeReveal></div><button className="text-link" onClick={() => { if (expanded) { setExpanded(false); setCategory('All'); setQuery(''); } else { setExpanded(true); setLimit(9); } }}>{expanded ? 'Selected work' : 'All work'}<ArrowRight size={21}/></button></Reveal>
     <Reveal className="portfolio-toolbar">
-      <div className="filters" role="group" aria-label="Kategori karya">
+      <div className="filters" role="group" aria-label="Work categories">
         {categories.map(c => <button key={c} className={category === c ? 'selected' : ''} aria-pressed={category === c} onClick={() => { setCategory(c); setExpanded(true); setLimit(9); }}>{c}{c === category && <motion.span className="filter-line" layoutId="filter-line"/>}</button>)}
       </div>
-      <label className="search-box"><Search size={15}/><span>Cari</span><input aria-label="Cari karya" type="search" placeholder="Judul atau kategori…" value={query} onChange={e => { setQuery(e.target.value); setExpanded(true); setLimit(9); }}/></label>
+      <label className="search-box"><Search size={15}/><span>Search</span><input aria-label="Search work" type="search" placeholder="Title or category…" value={query} onChange={e => { setQuery(e.target.value); setExpanded(true); setLimit(9); }}/></label>
     </Reveal>
     <motion.div className="project-grid" layout><AnimatePresence mode="popLayout">{projects.map((p, i) => <ProjectCard key={p.category + p.title + p.media} project={p} index={i} onOpen={onProject}/>)}</AnimatePresence></motion.div>
-    {loading && <div className="empty-state"><p>Memuat karya…</p></div>}
-    {!loading && projects.length === 0 && <div className="empty-state"><p>Tidak ada karya untuk “{query}”.</p><button className="text-link" onClick={() => { setQuery(''); setCategory('Semua'); }}>Reset pencarian <X size={15}/></button></div>}
-    {expanded && results.length > limit && <div className="load-more"><button className="outline-button" onClick={() => setLimit(v => v + 9)}>Tampilkan karya lainnya <Plus size={16}/></button><span>{projects.length} dari {results.length} karya</span></div>}
-    <BrandStrip/>
+    {loading && <div className="empty-state"><p>Loading work…</p></div>}
+    {!loading && projects.length === 0 && <div className="empty-state"><p>No work found for “{query}”.</p><button className="text-link" onClick={() => { setQuery(''); setCategory('All'); }}>Reset search <X size={15}/></button></div>}
+    {expanded && results.length > limit && <div className="load-more"><button className="outline-button" onClick={() => setLimit(v => v + 9)}>Show more work <Plus size={16}/></button><span>{projects.length} of {results.length} projects</span></div>}
   </section>;
 }
 
 const processSteps = [
-  ['01', 'THE IDEA', 'Mendengar cerita Anda. Menentukan pesan, arah visual, dan rasa yang ingin dibawa.'],
-  ['02', 'THE PLAN', 'Mengembangkan konsep, referensi, dan alur kerja yang sesuai dengan kebutuhan produksi.'],
-  ['03', 'THE CRAFT', 'Editing, compositing, dan visual effects. Membentuk setiap detail menjadi satu cerita.'],
-  ['04', 'THE POLISH', 'Menyatukan warna, ritme, dan suara. Memastikan setiap frame bekerja sebagaimana mestinya.'],
-  ['05', 'THE FINAL FRAME', 'Review bersama, sentuhan terakhir, lalu hasil yang siap menemui penontonnya.'],
+  ['01', 'Idea', 'Listening to your story. Defining the message, the visual direction, and the feeling to carry.', ['Brief', 'References']],
+  ['02', 'Plan', 'Developing the concept, references, and a workflow that fits what the production needs.', ['Storyboard', 'Workflow']],
+  ['03', 'Craft', 'Editing, compositing, and visual effects. Shaping every detail into one story.', ['Editing', 'VFX']],
+  ['04', 'Polish', 'Aligning color, rhythm, and sound. Making sure every frame does its job.', ['Color', 'Sound']],
+  ['05', 'Final frame', 'Review together, final touches, then a result ready to meet its audience.', ['Review', 'Delivery']],
 ];
+const PROCESS_ICONS = [Lightbulb, ClipboardList, Scissors, Palette, Flag];
+const PROCESS_COLORS = [['#0a84ff', '#2f6bff'], ['#2f6bff', '#5e5ce6'], ['#5e5ce6', '#af52de'], ['#af52de', '#ff2d55'], ['#ff2d55', '#ff9500']];
+function ProcessPanel() {
+  const enabled = useContext(MotionContext);
+  const ref = useRef(null);
+  const inView = useInView(ref, { amount: 0.4 });
+  const [active, setActive] = useState(0);
+  const [hover, setHover] = useState(false);
+  const N = processSteps.length, DUR = 5200;
+  const playing = enabled && inView && !hover;
+  useEffect(() => {
+    if (!playing) return;
+    const t = setTimeout(() => setActive(a => (a + 1) % N), DUR);
+    return () => clearTimeout(t);
+  }, [active, playing, N]);
+  const [num, title, text, tags] = processSteps[active];
+  const [c1, c2] = PROCESS_COLORS[active];
+  const go = d => setActive(a => (a + d + N) % N);
+  return <div className="process-panel pp"><Reveal><p className="eyebrow">Process</p><h3 className="panel-heading">From idea to final frame</h3></Reveal>
+    <div className="pp-wrap" ref={ref} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <div className="pp-tabs" role="tablist" aria-label="Process steps">
+        {processSteps.map(([n, t], i) => { const Icon = PROCESS_ICONS[i]; const on = i === active; return <button key={n} role="tab" aria-selected={on} aria-label={`Step ${n}: ${t}`} className={`pp-tab${on ? ' on' : ''}`} onClick={() => setActive(i)}>
+          {on && <motion.span layoutId="pp-pill" className="pp-pill" style={{ background: `linear-gradient(135deg, ${PROCESS_COLORS[i][0]}, ${PROCESS_COLORS[i][1]})` }} transition={{ type: 'spring', stiffness: 380, damping: 30 }}/>}
+          <Icon size={16}/><span className="pp-tab-n">{n}</span>
+        </button>; })}
+      </div>
+      <div className="pp-card" style={{ '--c1': c1, '--c2': c2 }}>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={active} className="pp-slide" role="tabpanel" initial={enabled ? { opacity: 0, x: 28 } : false} animate={{ opacity: 1, x: 0 }} exit={enabled ? { opacity: 0, x: -28 } : { opacity: 0 }} transition={{ duration: 0.32, ease: EASE }}>
+            <p className="pp-step">Step {num} of {String(N).padStart(2, '0')}</p>
+            <h4>{title}</h4>
+            <p className="pp-desc">{text}</p>
+            <div className="step-tags">{tags.map(t => <span key={t}>{t}</span>)}</div>
+          </motion.div>
+        </AnimatePresence>
+        <div className="pp-foot">
+          <div className="pp-dots">{processSteps.map((_, i) => <i key={i} className={i === active ? 'on' : ''}/>)}</div>
+          <div className="pp-nav"><button onClick={() => go(-1)} aria-label="Previous step"><ChevronLeft size={18}/></button><button onClick={() => go(1)} aria-label="Next step"><ChevronRight size={18}/></button></div>
+        </div>
+        <div className="pp-bar" aria-hidden="true"><motion.i key={`${active}-${playing}`} initial={{ scaleX: 0 }} animate={{ scaleX: playing ? 1 : 0 }} transition={{ duration: playing ? DUR / 1000 : 0, ease: 'linear' }}/></div>
+      </div>
+    </div>
+  </div>;
+}
 function Awards({onProject, awards, certificates}) {
   const [expanded,setExpanded] = useState(false);
   const laurelPath = 'M48 94C8 68 9 30 35 5M22 61C8 60 3 49 3 44c12 0 19 6 19 17zm-5-19C5 35 6 23 8 19c11 5 13 14 9 23zm7-20C15 12 20 3 24 0c7 8 6 16 0 22zM31 79C17 79 8 70 7 64c13-2 22 4 24 15zm-3-18c-5-10-2-19 7-25 5 11 1 20-7 25zm10 24c-6-11-4-20 5-27 6 9 5 20-5 27z';
@@ -532,21 +401,64 @@ function About({ settings }) {
   const education = settings.education || [];
   const skills = settings.skills || [];
   return <section id="about" className="about section-wrap" ref={ref}>
-    <Reveal className="about-lead"><div><span className="eyebrow">02 / BEHIND THE FRAMES</span><WipeReveal as="h2" className="display">BUKAN SEKADAR VISUAL.<br/>TAPI CARA <span className="accent">BERCERITA.</span></WipeReveal></div><p>{settings.about_bio}</p></Reveal>
-    <div className="studio-grid">
-      <Reveal className="education-panel"><h3 className="panel-heading">EDUCATION & SKILLS</h3><p className="eyebrow accent">PENDIDIKAN</p>{education.map((e, i) => <div className="education-row" key={e.title + i}><strong>{e.title}</strong>{e.meta && <span>{e.meta}</span>}<p>{e.text}</p></div>)}<p className="eyebrow accent skills-heading">CREATIVE TOOLKIT</p><div className="skill-tags">{skills.map(s => <span key={s}>{s}</span>)}</div></Reveal>
-      <div className="process-panel"><Reveal><h3 className="panel-heading">FROM IDEA TO FINAL FRAME</h3></Reveal><div className="process-list"><div className="process-track"><motion.div style={{ scaleY: enabled ? scrollYProgress : 1 }}/></div>{processSteps.map(([num, title, text], i) => <Reveal key={num} className="process-row" delay={i * 0.035}><span className="process-num display">{num}</span><span className="process-node"/><div><h4>{title}</h4><p>{text}</p></div></Reveal>)}</div></div>
-      <Reveal className="quote-panel"><span className="quote-mark display">“</span><blockquote>Dari konsep<br/>dan storytelling,<br/><em>sampai visual<br/>yang sinematik.</em></blockquote><span className="handwriting">Azizi</span><div className="quote-bottom">LET’S MAKE<br/>THE NEXT FRAME COUNT.<span className="quote-symbol" aria-hidden="true">✳</span></div></Reveal>
+    <div className="tp-grid">
+      <ToolsStrip settings={settings}/>
+      <ProcessPanel/>
     </div>
   </section>;
 }
 
+const EXP_EN = {
+  'Mengembangkan konsep dan naskah film pendek, serta memproduksi konten sinematik untuk brand café, fashion, dan hijab. Dari storytelling sampai penyelesaian visual.': 'Developing concepts and scripts for short films, and producing cinematic content for café, fashion, and hijab brands. From storytelling to final visuals.',
+  'Compositing, CGI, matchmove, rotoscoping, dan breakdown editing. Terlibat dalam supervisi pengambilan gambar untuk kebutuhan post-production.': 'Compositing, CGI, matchmove, rotoscoping, and breakdown editing. Involved in on-set supervision for post-production needs.',
+  'Terlibat dalam produksi film dan iklan, mempelajari pipeline studio, serta berkolaborasi dalam workflow visual effects dan animasi.': 'Contributed to film and commercial production, learned the studio pipeline, and collaborated on visual effects and animation workflows.',
+  'Menyunting video review hotel untuk YouTube, memotret pernikahan, dan berkolaborasi dalam film pendek sebagai editor dan aktor.': 'Edited hotel review videos for YouTube, photographed weddings, and collaborated on short films as an editor and actor.',
+  'Membuat konten gaming, coding, film pendek, dan eksperimen VFX. Tempat saya mencoba ide dan terus mengembangkan cara bercerita.': 'Creating gaming, coding, short film, and VFX experiment content. A place to try ideas and keep growing as a storyteller.',
+  'SEKARANG': 'PRESENT', 'BULAN': 'MONTHS',
+};
+const CERT_EN = { 'Juara 1 Movie Event': '1st Place, Movie Event', 'Lulusan Terbaik 2': '2nd Best Graduate' };
+const tEn = t => (t && EXP_EN[t]) || t;
+const STAT_EN = { 'TAHUN DI INDUSTRI KREATIF': 'YEARS IN THE CREATIVE INDUSTRY', 'PROYEK FILM DAN CERITA': 'FILM & STORY PROJECTS' };
+const dateEn = d => d ? d.replace('SEKARANG', 'PRESENT').replace('BULAN', 'MONTHS') : d;
+const richOf = t => toHtml(tEn(t));
+const shortOf = t => summaryOf(tEn(t));
+
+function ExperienceModal({ experiences, onClose }) {
+  const enabled = useContext(MotionContext);
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
+  return <motion.div className="exp-backdrop" role="dialog" aria-modal="true" aria-labelledby="exp-title" onClick={onClose} initial={enabled ? { opacity: 0 } : false} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+    <motion.div className="exp-modal" onClick={e => e.stopPropagation()} initial={enabled ? { opacity: 0, y: 40, scale: 0.97 } : false} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 30, scale: 0.98 }} transition={{ type: 'spring', stiffness: 260, damping: 28 }}>
+      <header className="exp-head"><div><p className="eyebrow">Experience</p><h3 id="exp-title">Work experience</h3></div><button className="exp-close" onClick={onClose} aria-label="Close"><X size={18}/></button></header>
+      <div className="exp-body">
+        {experiences.map(job => <article className="exp-item" key={job.id || job.title}>
+          <p className="exp-date">{dateEn(job.date_label)}</p>
+          <h4>{job.title}</h4>
+          {job.place && <p className="exp-company">{job.place}</p>}
+          <div className="exp-rich" dangerouslySetInnerHTML={{ __html: richOf(job.description) }}/>
+        </article>)}
+      </div>
+    </motion.div>
+  </motion.div>;
+}
+
 function Journey({ onProject, experiences, certificates, settings }) {
-  const [open, setOpen] = useState(0);
+  const [details, setDetails] = useState(false);
+  const education = settings.education || [];
+  const skills = settings.skills || [];
   return <section id="experience" className="journey section-wrap">
-    <Reveal className="section-heading"><div><span className="eyebrow">03 / THE JOURNEY</span><WipeReveal as="h2">TERUS BERGERAK. TERUS BERKARYA<span className="accent">.</span></WipeReveal></div><a className="text-link" href={settings.cv_url} download>RESUME<Download size={16}/></a></Reveal>
-    <div className="journey-grid"><div className="experience-list">{experiences.map((job, i) => <Reveal className={`experience-row ${open === i ? 'is-open' : ''}`} key={job.id || job.title}><button aria-expanded={open === i} aria-controls={`job-${i}`} onClick={() => setOpen(open === i ? null : i)}><span className="experience-date">{job.date_label}</span><span><h3>{job.title}</h3><span className="experience-place">{job.place}</span></span>{open === i ? <Minus size={18}/> : <Plus size={18}/>}</button><AnimatePresence initial={false}>{open === i && <motion.div id={`job-${i}`} initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }}><p>{job.description}</p></motion.div>}</AnimatePresence></Reveal>)}</div>
-    <Reveal className="awards-panel"><p className="eyebrow">A FEW MILESTONES</p><h3 className="display">LITTLE WINS.<br/><span className="accent">BIG MEANING.</span></h3><div className="award-list">{certificates.map((cert, i) => <button key={cert.id || cert.title} onClick={() => onProject({ ...cert, type: 'image', media: cert.image, category: 'Certificate', description: 'Sertifikat dan penghargaan dari arsip Azizi.' })}><span>{String(i + 1).padStart(2, '0')}</span><span>{cert.title}<small>{cert.year}</small></span><ArrowUpRight size={19}/></button>)}</div></Reveal></div>
+    <Reveal className="section-heading"><div><span className="eyebrow">Journey</span><WipeReveal as="h2">Always moving. Always creating<span className="accent">.</span></WipeReveal></div>{settings.cv_url && <a className="text-link" href={settings.cv_url} target="_blank" rel="noopener noreferrer">View resume<Download size={16}/></a>}</Reveal>
+    <div className="journey-grid"><Reveal className="education-panel"><h3 className="panel-heading">Education & skills</h3><p className="eyebrow accent">Education</p>{education.map((e, i) => <div className="education-row" key={e.title + i}><strong>{e.title}</strong>{e.meta && <span>{e.meta}</span>}<p>{e.text}</p></div>)}<p className="eyebrow accent skills-heading">Creative toolkit</p><div className="skill-tags">{skills.map(s => <span key={s}>{s}</span>)}</div></Reveal>
+    <div className="experience-list">
+      <div className="exp-list-head"><h3 className="panel-heading">Experience</h3><button className="exp-more" onClick={() => setDetails(true)}>View details<ChevronRight size={16}/></button></div>
+      {experiences.map((job, i) => <Reveal className="experience-row exp-static" key={job.id || job.title} delay={i * 0.04}><span className="experience-date">{dateEn(job.date_label)}</span><div><h3>{job.title}</h3><span className="experience-place">{job.place}</span>{job.description && <p className="exp-short">{shortOf(job.description)}</p>}</div></Reveal>)}
+    </div></div>
+    <AnimatePresence>{details && <ExperienceModal experiences={experiences} onClose={() => setDetails(false)}/>}</AnimatePresence>
   </section>;
 }
 
@@ -555,15 +467,15 @@ function Contact({ onProject, featured, settings }) {
   const send = e => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
-    const text = `Halo Azizi, saya ${data.get('name')}.\n\nJenis proyek: ${data.get('type')}\n${data.get('message')}`;
+    const text = `Hi Azizi, I’m ${data.get('name')}.\n\nProject type: ${data.get('type')}\n${data.get('message')}`;
     window.open(`https://wa.me/${settings.contact_whatsapp}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
     setSent(true);
   };
   return <section id="contact" className="contact section-wrap">
-    <div className="contact-grid"><Reveal className="contact-intro"><span className="eyebrow">04 / YOUR NEXT STORY</span><WipeReveal as="h2" className="display">LET’S WORK<br/>TOGETHER<span className="accent">.</span></WipeReveal><p>Punya cerita yang ingin diwujudkan?<br/>Mari buat sesuatu yang layak ditonton.</p><Magnetic href={`https://wa.me/${settings.contact_whatsapp}`} target="_blank" rel="noopener noreferrer" className="contact-cta"><span className="round-arrow"><ArrowUpRight size={21}/></span>MULAI PERCAKAPAN</Magnetic></Reveal>
-    <Reveal className="contact-links" delay={0.1}><a href={`mailto:${settings.contact_email}`}><Mail/><span><small>EMAIL</small>{settings.contact_email}</span><ArrowUpRight size={16}/></a><a href={settings.contact_instagram_url} target="_blank" rel="noopener noreferrer"><Instagram/><span><small>INSTAGRAM</small>{settings.contact_instagram_handle}</span><ArrowUpRight size={16}/></a><a href={`tel:+${settings.contact_whatsapp}`}><Phone/><span><small>PHONE / WHATSAPP</small>{settings.contact_phone_display}</span><ArrowUpRight size={16}/></a><div><MapPin/><span><small>BASED IN</small>{settings.contact_location}</span></div></Reveal>
-    <Reveal className="contact-reel" delay={0.2}><button onClick={() => featured[0] && onProject(featured[0])} aria-label="Putar showreel Azizi"><div className="reel-screen"><span className="reel-screen-top">AZIZI®<span>FILM / SHOWREEL</span></span><MediaImage src={featured[0]?.image} alt="Showreel Azizi"/><span className="reel-screen-title display">MAKE IT<br/><span>FEEL REAL.</span></span><span className="play-circle"><Play size={18} fill="currentColor"/></span></div><span className="reel-caption">PRESS PLAY. ENTER MY WORLD.</span></button></Reveal></div>
-    <Reveal><details className="project-brief"><summary>Ceritakan proyek Anda <Plus size={19}/></summary><form onSubmit={send}><label>Nama Anda<input name="name" required placeholder="Nama atau brand" autoComplete="name" maxLength="100"/></label><label>Jenis proyek<select name="type"><option>Film & Video Editing</option><option>Commercial Content</option><option>Kolaborasi lainnya</option></select></label><label className="brief-message">Tentang proyek<textarea name="message" required rows="3" placeholder="Ceritakan ide, kebutuhan, dan perkiraan waktunya…" maxLength="3000"/></label><button className="solid-button" type="submit">Lanjut ke WhatsApp <ArrowUpRight size={18}/></button><p className="form-note" role="status">{sent ? 'Draft pesan siap di WhatsApp. Tekan Kirim di sana untuk memulai percakapan.' : 'Brief akan dibuka sebagai draft pesan di WhatsApp.'}</p></form></details></Reveal>
+    <div className="contact-grid"><Reveal className="contact-intro"><span className="eyebrow">Contact</span><WipeReveal as="h2" className="display">Let’s work<br/>together<span className="accent">.</span></WipeReveal><p>Have a story to tell?<br/>Let’s make something worth watching.</p><div className="contact-actions"><Magnetic href={`https://wa.me/${settings.contact_whatsapp}`} target="_blank" rel="noopener noreferrer" className="contact-cta contact-btn"><span className="round-arrow"><ArrowUpRight size={21}/></span>Start a conversation</Magnetic><a className="contact-secondary contact-btn" href={`mailto:${settings.contact_email}`}>Send an email</a></div></Reveal>
+    <Reveal className="contact-links" delay={0.1}><a href={`mailto:${settings.contact_email}`}><Mail/><span><small>Email</small>{settings.contact_email}</span><ArrowUpRight size={16}/></a><a href={settings.contact_instagram_url} target="_blank" rel="noopener noreferrer"><Instagram/><span><small>Instagram</small>{settings.contact_instagram_handle}</span><ArrowUpRight size={16}/></a><a href={`tel:+${settings.contact_whatsapp}`}><Phone/><span><small>Phone / WhatsApp</small>{settings.contact_phone_display}</span><ArrowUpRight size={16}/></a><div><MapPin/><span><small>Based in</small>{(/^indramayu/i.test(settings.contact_location || '') ? (settings.hero_location || '') : (settings.contact_location || settings.hero_location || '')).replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '').trim().replace(/(^|[\s,])([A-Za-z])([A-Za-z]*)/g, (m, sp, f, r) => sp + f.toUpperCase() + r.toLowerCase())}</span></div></Reveal>
+</div>
+    <Reveal><details className="project-brief"><summary><span className="brief-icon"><MessageCircle size={22}/></span><span className="brief-text"><b>Tell me about your project</b><small>Share your idea, needs, and timeline. It opens as a draft in WhatsApp.</small></span><span className="brief-chips" aria-hidden="true"><i>Film</i><i>Commercial</i><i>Collab</i></span><Plus size={19}/></summary><form onSubmit={send}><label>Your name<input name="name" required placeholder="Name or brand" autoComplete="name" maxLength="100"/></label><label>Project type<select name="type"><option>Film & Video Editing</option><option>Commercial Content</option><option>Other collaboration</option></select></label><label className="brief-message">About the project<textarea name="message" required rows="3" placeholder="Share your idea, needs, and rough timeline…" maxLength="3000"/></label><button className="solid-button" type="submit">Continue on WhatsApp <ArrowUpRight size={18}/></button><p className="form-note" role="status">{sent ? 'Message drafted in WhatsApp. Press Send there to start the conversation.' : 'Your brief opens as a draft message in WhatsApp.'}</p></form></details></Reveal>
   </section>;
 }
 
@@ -579,10 +491,11 @@ function ProjectDialog({ project, onClose }) {
   const embedType = activeShot?.video ? 'youtube' : activeShot?.drive ? 'drive' : project.type;
   const embedMedia = activeShot?.video || activeShot?.drive?.match(/\/d\/([^/]+)/)?.[1] || project.media;
   const isVideo = ['youtube', 'drive'].includes(embedType);
+  const isUpload = project.type === 'video';
   const availableModes = [['layout', 'Layout'], ['solid', 'Solid'], ['material', 'Material'], ['lighting', 'Lighting'], ['final', 'Final render']].filter(([mode]) => activeShot?.[mode] && !(mode === 'solid' && activeShot.hideSolidMode));
   const effectiveMode = activeShot?.[renderMode] ? renderMode : availableModes[0]?.[0];
   const rendered = activeShot?.[effectiveMode] || activeShot?.image || project.image;
-  const sourceUrl = embedType === 'youtube' ? `https://www.youtube.com/watch?v=${embedMedia}` : embedType === 'drive' ? `https://drive.google.com/file/d/${embedMedia}/view` : project.type === 'render' ? rendered : project.media || project.image;
+  const sourceUrl = embedType === 'youtube' ? `https://www.youtube.com/watch?v=${embedMedia}` : embedType === 'drive' ? `https://drive.google.com/file/d/${embedMedia}/view` : project.type === 'render' ? rendered : isUpload ? '' : project.media || project.image;
   const changeShot = next => { setMediaLoaded(false); setMediaFailed(false); setShot(next); };
   useEffect(() => {
     const previous = document.activeElement;
@@ -608,78 +521,48 @@ function ProjectDialog({ project, onClose }) {
   }, [mediaLoaded, retried, isVideo, embedMedia]);
   return <motion.div className="dialog-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
     <motion.div ref={ref} className="project-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabIndex="-1" initial={enabled ? { y: 45, scale: 0.97 } : false} animate={{ y: 0, scale: 1 }} exit={{ y: 20, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }}>
-      <div className="dialog-heading"><span className="eyebrow">{project.category} {project.year && ` / ${project.year}`}</span><button onClick={onClose} className="icon-button" aria-label="Tutup karya"><X/></button></div>
-      <div className={`dialog-media ${!isVideo ? 'still' : ''}`}>
-        {isVideo ? <>{!mediaLoaded && <div className="media-loading" role="status">{mediaFailed ? <><p>Preview belum bisa dimuat. Buka sumber aslinya untuk menonton.</p><button className="outline-button" onClick={() => { setMediaFailed(false); setMediaLoaded(false); setRetried(v => v + 1); }}>Coba lagi</button></> : <><span className={enabled ? 'loading-ring' : 'loading-ring paused'}/><p>Memuat film…</p></>}</div>}<iframe key={`${embedMedia}-${retried}`} src={embedType === 'youtube' ? `https://www.youtube-nocookie.com/embed/${embedMedia}?autoplay=1&rel=0` : `https://drive.google.com/file/d/${embedMedia}/preview`} title={project.title} width="1280" height="720" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen onLoad={() => { setMediaLoaded(true); setMediaFailed(false); }} onError={() => setMediaFailed(true)}/></> : <MediaImage src={rendered} alt={project.title} priority/>}
+      <div className="dialog-heading"><span className="eyebrow">{project.category} {project.year && ` / ${project.year}`}</span><button onClick={onClose} className="icon-button" aria-label="Close"><X/></button></div>
+      <div className={`dialog-media ${!isVideo && !isUpload ? 'still' : ''}${isUpload ? ' native' : ''}`}>
+        {isVideo ? <>{!mediaLoaded && <div className="media-loading" role="status">{mediaFailed ? <><p>Preview unavailable. Open the original source to watch.</p><button className="outline-button" onClick={() => { setMediaFailed(false); setMediaLoaded(false); setRetried(v => v + 1); }}>Coba lagi</button></> : <><span className={enabled ? 'loading-ring' : 'loading-ring paused'}/><p>Loading film…</p></>}</div>}<iframe key={`${embedMedia}-${retried}`} src={embedType === 'youtube' ? `https://www.youtube-nocookie.com/embed/${embedMedia}?autoplay=1&rel=0` : `https://drive.google.com/file/d/${embedMedia}/preview`} title={project.title} width="1280" height="720" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen onLoad={() => { setMediaLoaded(true); setMediaFailed(false); }} onError={() => setMediaFailed(true)}/></> : isUpload ? <video key={project.media} src={project.media} poster={project.image || undefined} controls autoPlay playsInline preload="metadata" controlsList="nodownload"/> : <MediaImage src={rendered} alt={project.title} priority/>}
       </div>
       {project.type === 'render' && (availableModes.length > 0 || project.renders.length > 1) && <div className="render-controls"><div role="group" aria-label="Tahap render">{availableModes.map(([mode, label]) => <button key={mode} className={effectiveMode === mode ? 'selected' : ''} onClick={() => setRenderMode(mode)} aria-pressed={effectiveMode === mode}>{label}</button>)}</div>{project.renders.length > 1 && <div className="shot-controls"><button className="icon-button" aria-label="Shot sebelumnya" onClick={() => changeShot((shot - 1 + project.renders.length) % project.renders.length)}><ChevronLeft/></button><span>SHOT {shot + 1} / {project.renders.length}</span><button className="icon-button" aria-label="Shot selanjutnya" onClick={() => changeShot((shot + 1) % project.renders.length)}><ChevronRight/></button></div>}</div>}
-      <div className="dialog-description"><div><h2 id="dialog-title">{project.title}</h2>{project.role && <span className="accent">{project.role}</span>}<p>{project.description}</p></div>{sourceUrl && <a className="outline-button" href={sourceUrl} target="_blank" rel="noopener noreferrer">{project.type === 'website' ? 'Kunjungi website' : 'Buka sumber asli'}<ExternalLink size={15}/></a>}</div>
-      {isVideo && <p className="embed-note">Jika video dibatasi oleh pemiliknya, gunakan “Buka sumber asli”.</p>}
+      <div className="dialog-description"><div><h2 id="dialog-title">{project.title}</h2>{project.role && <span className="accent">{project.role}</span>}<p>{project.description}</p></div>{sourceUrl && <a className="outline-button" href={sourceUrl} target="_blank" rel="noopener noreferrer">{project.type === 'website' ? 'Kunjungi website' : 'Open original source'}<ExternalLink size={15}/></a>}</div>
+      {isVideo && <p className="embed-note">Jika video dibatasi oleh pemiliknya, gunakan “Open original source”.</p>}
     </motion.div>
   </motion.div>;
 }
 
-function TravelingPortrait({ portraitUrl }) {
+const STRIP_TOOLS = [['cc', 'CapCut', './Asset/svg/cc.svg'], ['pr', 'Premiere Pro', './Asset/svg/pr.svg'], ['ae', 'After Effects', './Asset/svg/ae.svg'], ['tool-green', 'Affinity by Canva', './Asset/img/tools/tool-green.png']];
+function ToolsStrip({ settings }) {
   const enabled = useContext(MotionContext);
-  const elRef = useRef(null);
-  const [active, setActive] = useState(false);
+  const skills = settings.skills || [];
+  const pop = i => enabled ? { initial: { opacity: 0, y: 36, scale: 0.55 }, whileInView: { opacity: 1, y: 0, scale: 1 }, viewport: { once: true, amount: 0.6 }, transition: { type: 'spring', stiffness: 260, damping: 15, delay: 0.1 + i * 0.09 } } : {};
+  return <div className="tools-col" aria-label="Tools and skills">
+    <Reveal><p className="eyebrow">Toolkit</p><h3 className="panel-heading">The tools behind the work</h3></Reveal>
+    <div className="tools-wrap">
+      <ul className="dock" aria-label="Tools I edit with">{STRIP_TOOLS.map(([f, n, src], i) => <motion.li className="dock-item" key={f} {...pop(i)}>
+        <img src={src} alt={n || 'Tool'} width="64" height="64" draggable="false"/>
+        {n && <span className="dock-tip">{n}</span>}
+      </motion.li>)}</ul>
+      <ul className="skill-pills">{skills.map((t, i) => <motion.li key={t} {...(enabled ? { initial: { opacity: 0, x: 24 }, whileInView: { opacity: 1, x: 0 }, viewport: { once: true, amount: 0.6 }, transition: { duration: 0.6, delay: 0.5 + i * 0.1, ease: EASE } } : {})}>{t}</motion.li>)}</ul>
+    </div>
+  </div>;
+}
+
+function FloatingCTA() {
+  const [show, setShow] = useState(false);
   useEffect(() => {
-    if (!enabled) return;
-    let raf = null;
-    const activeRef = { current: false };
-    const state = { top: 0, left: 0, width: 0, height: 0, p: 0, inited: false };
-    const loop = () => {
-      const heroPhoto = document.querySelector('#home .hero-portrait');
-      const introPhoto = document.querySelector('#intro .intro-photo');
-      const node = elRef.current;
-      if (heroPhoto && introPhoto && node) {
-        const hr = heroPhoto.getBoundingClientRect();
-        const ir = introPhoto.getBoundingClientRect();
-        const vh = window.innerHeight;
-        const raw = (vh - ir.top) / (vh * 0.65);
-        const targetP = Math.max(0, Math.min(1, raw));
-        const targetTop = hr.top + (ir.top - hr.top) * targetP;
-        const targetLeft = hr.left + (ir.left - hr.left) * targetP;
-        const targetWidth = hr.width + (ir.width - hr.width) * targetP;
-        const targetHeight = hr.height + (ir.height - hr.height) * targetP;
-        if (!state.inited || targetP < 0.02) {
-          state.top = targetTop; state.left = targetLeft; state.width = targetWidth; state.height = targetHeight; state.p = targetP;
-          state.inited = true;
-        } else {
-          const ease = 0.1;
-          state.top += (targetTop - state.top) * ease;
-          state.left += (targetLeft - state.left) * ease;
-          state.width += (targetWidth - state.width) * ease;
-          state.height += (targetHeight - state.height) * ease;
-          state.p += (targetP - state.p) * ease;
-        }
-        const p = state.p;
-        const clamp01 = x => Math.max(0, Math.min(1, x));
-        const heroOpacity = 1 - clamp01(p / 0.2);
-        const introOpacity = clamp01((p - 0.8) / 0.2);
-        const cloneOpacity = clamp01(p / 0.2) - clamp01((p - 0.8) / 0.2);
-        const isActive = cloneOpacity > 0.01;
-        if (isActive !== activeRef.current) { activeRef.current = isActive; setActive(isActive); }
-        node.style.opacity = String(cloneOpacity);
-        node.style.transform = `translate(${state.left}px, ${state.top}px)`;
-        node.style.width = `${state.width}px`;
-        node.style.height = `${state.height}px`;
-        heroPhoto.style.opacity = String(heroOpacity);
-        introPhoto.style.opacity = String(introOpacity);
-      }
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-      const heroPhoto = document.querySelector('#home .hero-portrait');
-      const introPhoto = document.querySelector('#intro .intro-photo');
-      if (heroPhoto) heroPhoto.style.opacity = '';
-      if (introPhoto) introPhoto.style.opacity = '';
-    };
-  }, [enabled]);
-  if (!enabled) return null;
-  return <div ref={elRef} className={`traveling-portrait${active ? ' is-active' : ''}`} aria-hidden="true">{portraitUrl && <img src={portraitUrl} alt=""/>}</div>;
+    let past = false, atContact = false;
+    const upd = () => setShow(past && !atContact);
+    const onScroll = () => { past = window.scrollY > 600; upd(); };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    const c = document.getElementById('contact');
+    const io = c ? new IntersectionObserver(([e]) => { atContact = e.isIntersecting; upd(); }, { threshold: 0.25 }) : null;
+    if (io) io.observe(c);
+    return () => { window.removeEventListener('scroll', onScroll); io && io.disconnect(); };
+  }, []);
+  return <a className={`float-cta${show ? ' on' : ''}`} href="#contact" tabIndex={show ? 0 : -1} aria-hidden={!show}><Briefcase size={17}/>Work with Azizi</a>;
 }
 
 function FloatingPortrait({ portraitUrl }) {
@@ -688,7 +571,7 @@ function FloatingPortrait({ portraitUrl }) {
   useEffect(() => {
     if (!enabled) return;
     const hero = document.getElementById('home');
-    const about = document.getElementById('about');
+    const about = document.getElementById('contact');
     if (!hero || !about) return;
     let heroPast = false, aboutReached = false;
     const update = () => setVisible(heroPast && !aboutReached);
@@ -706,13 +589,7 @@ function App() {
   const reduced = useReducedMotion();
   const [motionOn, setMotionOn] = useState(() => { try { return localStorage.getItem('azizi-motion') !== 'off'; } catch { return true; } });
   const enabled = motionOn && !reduced;
-  const [theme, setTheme] = useState(() => {
-    try {
-      const saved = localStorage.getItem('azizi-theme');
-      if (saved === 'light' || saved === 'dark') return saved;
-    } catch {}
-    return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  });
+  const [theme, setTheme] = useState(() => { try { const t = localStorage.getItem('azizi-theme'); return t === 'dark' ? 'dark' : 'light'; } catch { return 'light'; } });
   const [project, setProject] = useState(null);
   const [archive, setArchive] = useState([]);
   const [archiveLoading, setArchiveLoading] = useState(true);
@@ -730,7 +607,8 @@ function App() {
   const [settings, setSettings] = useState(() => {
     let cached = '';
     try { cached = localStorage.getItem('azizi-portrait') || ''; } catch {}
-    return { ...DEFAULT_SETTINGS, portrait_url: cached };
+    let cv = ''; try { cv = localStorage.getItem('azizi-cv') || ''; } catch {}
+    return { ...DEFAULT_SETTINGS, portrait_url: fixPortrait(cached), cv_url: cv };
   });
   const [experiences, setExperiences] = useState(DEFAULT_EXPERIENCES);
   const [awards, setAwards] = useState(DEFAULT_AWARDS);
@@ -741,8 +619,8 @@ function App() {
     supabase.from('site_settings').select('*').eq('id', 1).single().then(({ data, error }) => {
       if (!active) return;
       if (!error && data) {
-        setSettings(s => ({ ...s, ...data }));
-        try { if (data.portrait_url) localStorage.setItem('azizi-portrait', data.portrait_url); } catch {}
+        setSettings(s => ({ ...s, ...freshContact(data), portrait_url: fixPortrait(data.portrait_url) }));
+        try { if (data.portrait_url) localStorage.setItem('azizi-portrait', fixPortrait(data.portrait_url)); if (data.cv_url) localStorage.setItem('azizi-cv', data.cv_url); else localStorage.removeItem('azizi-cv'); } catch {}
       }
       setSettings(s => s.portrait_url ? s : { ...s, portrait_url: './Asset/img/azizi-portrait.png' });
     });
@@ -756,7 +634,7 @@ function App() {
       if (active && !error && data && data.length) setCertificates(data);
     });
     supabase.from('categories').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
-      if (active && !error && data && data.length) setCategories(['Semua', ...data.map(c => c.name)]);
+      if (active && !error && data && data.length) setCategories(['All', ...data.map(c => c.name)]);
     });
     return () => { active = false; };
   }, []);
@@ -765,36 +643,51 @@ function App() {
   useEffect(() => { document.documentElement.dataset.motion = enabled ? 'on' : 'off'; }, [enabled]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    try { localStorage.setItem('azizi-theme', theme); } catch {}
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#090909' : '#f5f3ee');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#1a1f2b' : '#f7f8fb');
+    try { localStorage.setItem('azizi-theme', theme); } catch {}
   }, [theme]);
+  const toggleTheme = e => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    const root = document.documentElement;
+    if (!enabled) { setTheme(next); return; }
+    const r = e && e.currentTarget ? e.currentTarget.getBoundingClientRect() : null;
+    const x = r ? r.left + r.width / 2 : window.innerWidth - 60, y = r ? r.top + r.height / 2 : 40;
+    const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+    if (document.startViewTransition) {
+      root.dataset.vt = 'on';
+      const t = document.startViewTransition(() => { flushSync(() => setTheme(next)); root.dataset.theme = next; });
+      t.ready.then(() => root.animate({ clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] }, { duration: 650, easing: 'cubic-bezier(.4,0,.2,1)', pseudoElement: '::view-transition-new(root)' })).catch(() => {});
+      t.finished.finally(() => { delete root.dataset.vt; });
+    } else {
+      root.classList.add('theme-fade');
+      setTheme(next);
+      setTimeout(() => root.classList.remove('theme-fade'), 600);
+    }
+  };
   const toggle = () => { setMotionOn(!motionOn); try { localStorage.setItem('azizi-motion', motionOn ? 'off' : 'on'); } catch {} };
-  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
-  const close = React.useCallback(() => setProject(null), []);
+    const close = React.useCallback(() => setProject(null), []);
   return <MotionContext.Provider value={enabled}>
     <MotionConfig reducedMotion={enabled ? 'user' : 'always'} transition={{ ease: EASE }}>
-      <a className="skip-link" href="#portfolio">Lewati ke karya</a>
-      <CursorGlow/>
-      <TravelingPortrait portraitUrl={settings.portrait_url}/>
+      <a className="skip-link" href="#portfolio">Skip to work</a>
       <FloatingPortrait portraitUrl={settings.portrait_url}/>
+      <FloatingCTA/>
       <motion.div className="reading-progress" style={{ scaleX: enabled ? progress : scrollYProgress }}/>
       <Header enabled={enabled} onToggle={toggle} theme={theme} onToggleTheme={toggleTheme}/>
       <main>
         <Hero onProject={setProject} featured={featured} settings={settings}/>
-        <Intro settings={settings}/>
-        <Portfolio onProject={setProject} archive={archive} featured={featured} loading={archiveLoading} categories={categories}/>
-        <Awards onProject={setProject} awards={awards} certificates={certificates}/>
+        <ClientsStrip/>
         <About settings={settings}/>
+        <Portfolio onProject={setProject} archive={archive} featured={featured} loading={archiveLoading} categories={categories}/>
         <Journey onProject={setProject} experiences={experiences} certificates={certificates} settings={settings}/>
         <Contact onProject={setProject} featured={featured} settings={settings}/>
       </main>
       <footer className="footer">
-        <a className="wordmark" href="#home">AZIZI<span>®</span></a>
-        <span>© {new Date().getFullYear()} AZIZI. EVERY FRAME HAS A PURPOSE.</span>
+        <a className="wordmark" href="#home">Azizi</a>
+        <span>© {new Date().getFullYear()} Azizi. Every frame has a purpose.</span>
         <div>
           <a href="https://www.youtube.com/@DuingZStudio" target="_blank" rel="noopener noreferrer" aria-label="YouTube DuingZ Studio"><Youtube size={17}/></a>
-          <a href="https://www.instagram.com/dododididaw/" target="_blank" rel="noopener noreferrer" aria-label="Instagram dododididaw"><Instagram size={17}/></a>
+          <a href={settings.contact_instagram_url} target="_blank" rel="noopener noreferrer" aria-label={`Instagram ${settings.contact_instagram_handle}`}><Instagram size={17}/></a>
           <a href="#home" aria-label="Kembali ke atas"><ArrowUpRight size={18}/></a>
         </div>
       </footer>

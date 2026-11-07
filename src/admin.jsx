@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Film, User, BookOpen, Briefcase, Trophy, LogOut, Plus, Pencil, Trash2, X, Loader2, Search, ChevronDown, Clapperboard, Megaphone, Menu, Upload, FileText } from 'lucide-react';
+import { Film, User, BookOpen, Briefcase, Trophy, LogOut, Plus, Pencil, Trash2, X, Loader2, Search, ChevronDown, Clapperboard, Megaphone, Menu, Upload, FileText, Phone } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import './admin.css';
+import { toHtml, sanitizeHtml } from './experience.js';
 
 const emptyProject = { type: 'youtube', title: '', description: '', media: '', role: '', year: '', category: 'Film', image: '' };
 
@@ -245,6 +246,98 @@ function ListCRUD({ table, title, fields, renderSummary, renderMeta, emptyItem, 
   </div>;
 }
 
+function RichEditor({ value, onChange, hint, label: lbl, wide }) {
+  const ref = useRef(null);
+  useEffect(() => { if (ref.current) ref.current.innerHTML = toHtml(value); }, []);
+  const emit = () => onChange(sanitizeHtml(ref.current.innerHTML));
+  const exec = (cmd, arg) => { ref.current.focus(); document.execCommand(cmd, false, arg); emit(); };
+  const link = () => { const url = window.prompt('Alamat link (https://…)'); if (url) exec('createLink', url); };
+  const tool = 'inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 transition';
+  return <div className={`${label} ${wide ? 'sm:col-span-2' : ''}`}>
+    <span>{lbl}</span>
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
+      <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 px-2 py-1.5 rounded-t-lg">
+        <button type="button" className={tool} title="Tebal" onMouseDown={e => e.preventDefault()} onClick={() => exec('bold')}><b>B</b></button>
+        <button type="button" className={tool} title="Miring" onMouseDown={e => e.preventDefault()} onClick={() => exec('italic')}><i>I</i></button>
+        <button type="button" className={tool} title="Garis bawah" onMouseDown={e => e.preventDefault()} onClick={() => exec('underline')}><u>U</u></button>
+        <span className="mx-1 h-5 w-px bg-slate-200"/>
+        <button type="button" className={tool} title="Daftar poin (•)" onMouseDown={e => e.preventDefault()} onClick={() => exec('insertUnorderedList')}>• Poin</button>
+        <button type="button" className={tool} title="Daftar angka (1. 2. 3.)" onMouseDown={e => e.preventDefault()} onClick={() => exec('insertOrderedList')}>1. Angka</button>
+        <span className="mx-1 h-5 w-px bg-slate-200"/>
+        <button type="button" className={tool} title="Link" onMouseDown={e => e.preventDefault()} onClick={link}>Link</button>
+        <button type="button" className={tool} title="Hapus format" onMouseDown={e => e.preventDefault()} onClick={() => exec('removeFormat')}>Bersihkan</button>
+      </div>
+      <div ref={ref} className="rich-editor" contentEditable suppressContentEditableWarning data-placeholder="Tulis ringkasan, lalu buat daftar poin atau angka…" onInput={emit} onBlur={emit}/>
+    </div>
+    {hint && <span className="text-xs font-normal text-slate-400">{hint}</span>}
+  </div>;
+}
+
+const ytId = v => { const m = (v || '').match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/); return m ? m[1] : (v || '').trim(); };
+
+async function uploadBlob(blob, name) {
+  const path = `${Date.now()}-${name}`;
+  const { error } = await supabase.storage.from('media').upload(path, blob, { upsert: false, contentType: blob.type });
+  if (error) throw error;
+  return supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+}
+
+function captureFrame(src) {
+  return new Promise((resolve, reject) => {
+    const v = document.createElement('video');
+    v.crossOrigin = 'anonymous'; v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = src;
+    const fail = () => reject(new Error('Tidak bisa mengambil gambar dari video ini.'));
+    v.onerror = fail;
+    v.onloadedmetadata = () => { v.currentTime = Math.min(1.5, Math.max(0.1, (v.duration || 3) / 8)); };
+    v.onseeked = () => {
+      try {
+        const w = Math.min(1280, v.videoWidth || 1280), h = Math.round(w * (v.videoHeight || 720) / (v.videoWidth || 1280));
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(v, 0, 0, w, h);
+        c.toBlob(b => b ? resolve(b) : fail(), 'image/jpeg', 0.88);
+      } catch { fail(); }
+    };
+  });
+}
+
+const MEDIA_INFO = {
+  youtube: { label: 'Video YouTube', placeholder: 'Tempel link YouTube atau ID videonya', hint: 'Boleh tempel link lengkap, ID-nya diambil otomatis.' },
+  drive: { label: 'File Google Drive', placeholder: 'ID file Google Drive', hint: 'ID ada di link Drive: …/file/d/ID/view' },
+  website: { label: 'Alamat website', placeholder: 'https://…', hint: '' },
+};
+
+function MediaField({ form, set }) {
+  const t = form.type;
+  if (t === 'video') return <UploadField label="Upload video (MP4 / WebM / MOV)" value={form.media} onChange={v => set('media', v)} accept="video/*" placeholder="Pilih file video dari komputer" wide required/>;
+  if (t === 'image') return <UploadField label="Upload gambar" value={form.media} onChange={v => set('media', v)} accept="image/*" placeholder="Pilih gambar dari komputer" wide required/>;
+  const info = MEDIA_INFO[t] || MEDIA_INFO.youtube;
+  return <label className={`${label} sm:col-span-2`}>{info.label}
+    <input className={input} value={form.media || ''} required placeholder={info.placeholder} onChange={e => { const v = t === 'youtube' ? ytId(e.target.value) : e.target.value; set('media', v); if (t === 'youtube' && v.length === 11 && !form.image) set('image', `https://img.youtube.com/vi/${v}/hqdefault.jpg`); }}/>
+    {info.hint && <span className="text-xs font-normal text-slate-400">{info.hint}</span>}
+  </label>;
+}
+
+function ThumbField({ form, set }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const canVideo = form.type === 'video' && form.media;
+  const canYt = form.type === 'youtube' && form.media && form.media.length === 11;
+  const fromVideo = async () => {
+    setBusy(true); setErr('');
+    try { const blob = await captureFrame(form.media); set('image', await uploadBlob(blob, 'thumb.jpg')); }
+    catch (e) { setErr(e.message || 'Gagal membuat thumbnail.'); }
+    setBusy(false);
+  };
+  return <div className="sm:col-span-2">
+    <UploadField label="Thumbnail (gambar sampul)" value={form.image} onChange={v => set('image', v)} accept="image/*" placeholder="Upload gambar sampul atau tempel link gambar" wide required/>
+    {(canVideo || canYt) && <div className="mt-2 flex flex-wrap items-center gap-2">
+      {canVideo && <button type="button" onClick={fromVideo} disabled={busy} className={btnGhost}>{busy ? <Loader2 size={14} className="animate-spin"/> : <Film size={14}/>}{busy ? 'Membuat…' : 'Buat thumbnail dari video'}</button>}
+      {canYt && <button type="button" onClick={() => set('image', `https://img.youtube.com/vi/${form.media}/hqdefault.jpg`)} className={btnGhost}><Film size={14}/>Pakai thumbnail YouTube</button>}
+      {err && <span className="text-xs text-rose-600">{err}</span>}
+    </div>}
+  </div>;
+}
+
 function ItemForm({ table, fields, initial, emptyItem, onDone }) {
   const [form, setForm] = useState(initial || emptyItem);
   const [saving, setSaving] = useState(false);
@@ -260,9 +353,9 @@ function ItemForm({ table, fields, initial, emptyItem, onDone }) {
   };
   return <form onSubmit={submit} className={`${card} mb-5`}>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-      {fields.map(f => f.type === 'upload' ? <UploadField key={f.key} label={f.label} value={form[f.key]} onChange={v => set(f.key, v)} accept={f.accept} wide={f.wide} required={f.required}/> : <label key={f.key} className={`${label} ${f.wide ? 'sm:col-span-2' : ''}`}>{f.label}
-        {f.type === 'textarea' ? <textarea className={input} rows="2" value={form[f.key] || ''} onChange={e => set(f.key, e.target.value)}/>
-        : f.type === 'select' ? <select className={input} value={form[f.key] || ''} onChange={e => set(f.key, e.target.value)} required={f.required}>{f.options.map(o => <option key={o} value={o}>{o}</option>)}</select>
+      {fields.map(f => f.type === 'media' ? <MediaField key={f.key} form={form} set={set}/> : f.type === 'thumb' ? <ThumbField key={f.key} form={form} set={set}/> : f.type === 'richtext' ? <RichEditor key={f.key} label={f.label} value={form[f.key]} onChange={v => set(f.key, v)} hint={f.hint} wide={f.wide}/> : f.type === 'upload' ? <UploadField key={f.key} label={f.label} value={form[f.key]} onChange={v => set(f.key, v)} accept={f.accept} wide={f.wide} required={f.required}/> : <label key={f.key} className={`${label} ${f.wide ? 'sm:col-span-2' : ''}`}>{f.label}
+        {f.type === 'textarea' ? <textarea className={input} rows={f.rows || 2} value={form[f.key] || ''} onChange={e => set(f.key, e.target.value)}/>
+        : f.type === 'select' ? <select className={input} value={form[f.key] || ''} onChange={e => set(f.key, e.target.value)} required={f.required}>{f.options.map(o => Array.isArray(o) ? <option key={o[0]} value={o[0]}>{o[1]}</option> : <option key={o} value={o}>{o}</option>)}</select>
         : <input className={input} value={form[f.key] || ''} onChange={e => set(f.key, e.target.value)} required={f.required}/>}
         {f.hint && <span className="text-xs font-normal text-slate-400">{f.hint}</span>}
       </label>)}
@@ -277,35 +370,43 @@ function ItemForm({ table, fields, initial, emptyItem, onDone }) {
 
 function PengalamanPage() {
   return <div>
-    <PageHeader title="Pengalaman Kerja" subtitle="Riwayat kerja yang tampil di section Perjalanan."/>
+    <PageHeader title="Pengalaman Kerja" subtitle="Dipakai di dua tempat: ringkasan di tampilan depan dan modal “View details”."/>
+    <div className={`${card} mb-6`}>
+      <p className="mb-3 text-sm font-semibold text-slate-800">Kolom mana mengisi bagian mana</p>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Tampil di depan (section Journey)</p>
+          <p className="text-[11px] text-sky-600 font-semibold">Periode</p>
+          <p className="text-sm font-bold text-slate-900">Posisi</p>
+          <p className="text-xs text-slate-600">Perusahaan / tempat</p>
+          <p className="mt-1 text-xs text-slate-500">Ringkasan singkat (paragraf pertama di Deskripsi)</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Modal “View details”</p>
+          <p className="text-[11px] text-sky-600 font-semibold">Periode</p>
+          <p className="text-sm font-bold text-slate-900">Posisi</p>
+          <p className="text-xs text-sky-700 font-semibold">Perusahaan / tempat</p>
+          <ul className="mt-1 list-disc pl-4 text-xs text-slate-500"><li>Poin pekerjaan (daftar di Deskripsi)</li><li>Bisa juga daftar angka 1. 2. 3.</li></ul>
+        </div>
+      </div>
+      <p className="mt-4 text-xs text-slate-500">Urutan tampil mengikuti kolom urutan di database (sort_order). Perubahan langsung terlihat setelah halaman situs di-refresh.</p>
+    </div>
     <ListCRUD table="experience" title="Pengalaman"
-      fields={[{ key: 'date_label', label: 'Tanggal/Periode', required: true }, { key: 'title', label: 'Posisi', required: true }, { key: 'place', label: 'Tempat' }, { key: 'description', label: 'Deskripsi', type: 'textarea', wide: true }]}
-      emptyItem={{ date_label: '', title: '', place: '', description: '' }}
+      fields={[
+        { key: 'date_label', label: 'Periode (depan + modal)', required: true, hint: 'Contoh: 2023 – 2025   atau   2026 · PRESENT' },
+        { key: 'title', label: 'Posisi / jabatan (depan + modal)', required: true, hint: 'Contoh: VFX Artist' },
+        { key: 'place', label: 'Perusahaan / tempat (depan + modal)', hint: 'Contoh: Dalang Digital Studio' },
+        { key: 'description', label: 'Deskripsi (ringkasan di depan + isi lengkap di modal)', type: 'richtext', wide: true, hint: 'Paragraf pertama (atau poin pertama) menjadi ringkasan di depan. Semua isi, termasuk daftar poin dan angka, tampil di modal View details.' },
+      ]}
+      emptyItem={{ date_label: '', title: '', place: '', description: '<p>Ringkasan singkat satu kalimat.</p><ul><li>Poin pekerjaan pertama</li><li>Poin pekerjaan kedua</li></ul>' }}
       renderSummary={e => `${e.title} — ${e.place || ''}`}
       renderMeta={e => e.date_label}/>
   </div>;
 }
 
 function AwardsPage() {
-  const { settings, loading, save } = useSiteSettings();
-  const [contact, setContact] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
-  useEffect(() => { if (settings) setContact(settings); }, [settings]);
-  const set = (k, v) => { setContact(c => ({ ...c, [k]: v })); setSaved(false); };
-  const onSave = async () => {
-    setSaving(true); setError(''); setSaved(false);
-    const { error } = await save({
-      contact_email: contact.contact_email, contact_instagram_handle: contact.contact_instagram_handle,
-      contact_instagram_url: contact.contact_instagram_url, contact_whatsapp: contact.contact_whatsapp,
-      contact_phone_display: contact.contact_phone_display, contact_location: contact.contact_location,
-    });
-    setSaving(false);
-    if (error) setError(error.message); else setSaved(true);
-  };
   return <div>
-    <PageHeader title="Awards, Sertifikat & Kontak"/>
+    <PageHeader title="Awards & Sertifikat"/>
     <ListCRUD table="awards" title="Awards"
       fields={[{ key: 'year', label: 'Tahun', required: true }, { key: 'title', label: 'Judul Award', required: true }, { key: 'event', label: 'Nama Event/Kompetisi' }]}
       emptyItem={{ year: '', title: '', event: '' }}
@@ -317,16 +418,54 @@ function AwardsPage() {
       emptyItem={{ title: '', year: '', image: '' }}
       renderSummary={c => c.title}
       renderMeta={c => c.year}/>
-    <hr className="my-8 border-slate-200"/>
-    <h3 className="mb-4 text-lg font-bold text-slate-900">Kontak</h3>
-    {loading || !contact ? <p className="text-slate-500">Memuat…</p> : <>
-      <div className={`${card} grid grid-cols-1 sm:grid-cols-2 gap-5`}>
-        <label className={label}>Email<input className={input} value={contact.contact_email || ''} onChange={e => set('contact_email', e.target.value)}/></label>
-        <label className={label}>Instagram handle<input className={input} value={contact.contact_instagram_handle || ''} onChange={e => set('contact_instagram_handle', e.target.value)}/></label>
-        <label className={label}>Instagram URL<input className={input} value={contact.contact_instagram_url || ''} onChange={e => set('contact_instagram_url', e.target.value)}/></label>
-        <label className={label}>Nomor WhatsApp (format 62xxx)<input className={input} value={contact.contact_whatsapp || ''} onChange={e => set('contact_whatsapp', e.target.value)}/></label>
-        <label className={label}>Nomor telepon (tampilan)<input className={input} value={contact.contact_phone_display || ''} onChange={e => set('contact_phone_display', e.target.value)}/></label>
-        <label className={label}>Lokasi<input className={input} value={contact.contact_location || ''} onChange={e => set('contact_location', e.target.value)}/></label>
+  </div>;
+}
+
+function KontakPage() {
+  const { settings, loading, save } = useSiteSettings();
+  const [f, setF] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => { if (settings) setF(settings); }, [settings]);
+  const set = (k, v) => { setF(c => ({ ...c, [k]: v })); setSaved(false); };
+  const KEYS = ['contact_email', 'contact_instagram_handle', 'contact_instagram_url', 'contact_whatsapp', 'contact_phone_display', 'contact_location'];
+  const onSave = async () => {
+    setSaving(true); setError(''); setSaved(false);
+    const payload = {}; KEYS.forEach(k => { payload[k] = (f[k] || '').trim(); });
+    payload.contact_whatsapp = payload.contact_whatsapp.replace(/[^0-9]/g, '');
+    const { error } = await save(payload);
+    setSaving(false);
+    if (error) setError(error.message); else setSaved(true);
+  };
+  const wa = (f?.contact_whatsapp || '').replace(/[^0-9]/g, '');
+  return <div>
+    <PageHeader title="Kontak" subtitle="Dipakai di kartu “Let’s work together” dan tombol kontak di situs."/>
+    {loading || !f ? <p className="text-slate-500">Memuat…</p> : <>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className={`${card} lg:col-span-3 grid grid-cols-1 gap-5 sm:grid-cols-2 content-start`}>
+          <label className={`${label} sm:col-span-2`}>Email<input type="email" className={input} value={f.contact_email || ''} onChange={e => set('contact_email', e.target.value)} placeholder="nama@email.com"/><span className="text-xs font-normal text-slate-400">Tujuan tombol “Send an email” dan baris Email.</span></label>
+          <label className={label}>Instagram (tampilan)<input className={input} value={f.contact_instagram_handle || ''} onChange={e => set('contact_instagram_handle', e.target.value)} placeholder="@username"/></label>
+          <label className={label}>Instagram (link)<input className={input} value={f.contact_instagram_url || ''} onChange={e => set('contact_instagram_url', e.target.value)} placeholder="https://www.instagram.com/username/"/></label>
+          <label className={label}>Nomor WhatsApp<input className={input} value={f.contact_whatsapp || ''} onChange={e => set('contact_whatsapp', e.target.value)} placeholder="6281234567890"/><span className="text-xs font-normal text-slate-400">Hanya angka, diawali kode negara (62). Tujuan tombol “Start a conversation”.</span></label>
+          <label className={label}>Nomor telepon (tampilan)<input className={input} value={f.contact_phone_display || ''} onChange={e => set('contact_phone_display', e.target.value)} placeholder="+62 812-3456-7890"/></label>
+          <label className={`${label} sm:col-span-2`}>Lokasi<input className={input} value={f.contact_location || ''} onChange={e => set('contact_location', e.target.value)} placeholder="Yogyakarta, Indonesia"/></label>
+        </div>
+        <div className={`${card} lg:col-span-2 self-start`}>
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Tampil di situs</p>
+          <div className="rounded-xl bg-slate-50 p-4 text-sm">
+            <p className="font-semibold text-slate-800">Let’s work together.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a href={wa ? `https://wa.me/${wa}` : undefined} target="_blank" rel="noopener noreferrer" className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white">Start a conversation</a>
+              <a href={f.contact_email ? `mailto:${f.contact_email}` : undefined} className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700">Send an email</a>
+            </div>
+            <ul className="mt-4 space-y-1 text-xs text-slate-600">
+              <li>Email: {f.contact_email || '—'}</li><li>Instagram: {f.contact_instagram_handle || '—'}</li>
+              <li>Phone / WhatsApp: {f.contact_phone_display || '—'}</li><li>Based in: {f.contact_location || '—'}</li>
+            </ul>
+          </div>
+          <p className="mt-3 text-xs text-slate-400">Klik dua tombol di atas untuk menguji tujuannya.</p>
+        </div>
       </div>
       <SaveBar saving={saving} saved={saved} error={error} onSave={onSave}/>
     </>}
@@ -411,12 +550,12 @@ function KaryaPage() {
       fields={[
         { key: 'title', label: 'Judul', required: true },
         { key: 'category', label: 'Kategori', type: 'select', options: categoryNames.length ? categoryNames : ['Film', 'Commercial'], required: true },
-        { key: 'type', label: 'Tipe', type: 'select', options: ['youtube', 'drive', 'image', 'website'], required: true },
+        { key: 'type', label: 'Sumber karya', type: 'select', options: [['youtube', 'YouTube'], ['video', 'Upload video (file sendiri)'], ['drive', 'Google Drive'], ['image', 'Gambar'], ['website', 'Website']], required: true },
         { key: 'year', label: 'Tahun' },
         { key: 'role', label: 'Peran' },
-        { key: 'media', label: 'Karya (Video/Gambar)', type: 'upload', accept: 'image/*,video/*', required: true, wide: true, hint: 'Tipe YouTube/Drive: isi Video/File ID secara manual (bukan upload). Tipe Gambar: bisa upload langsung.' },
+        { key: 'media', label: 'Karya', type: 'media', required: true, wide: true },
         { key: 'description', label: 'Deskripsi', type: 'textarea', wide: true },
-        { key: 'image', label: 'Thumbnail/Gambar', type: 'upload', required: true, wide: true },
+        { key: 'image', label: 'Thumbnail', type: 'thumb', required: true, wide: true },
       ]}
       emptyItem={emptyProject}
       renderSummary={p => p.title}
@@ -433,7 +572,8 @@ const NAV = [
     ['profil', 'Profil & Hero', User, ProfilPage],
     ['tentang', 'Tentang Saya', BookOpen, TentangPage],
     ['pengalaman', 'Pengalaman', Briefcase, PengalamanPage],
-    ['awards', 'Awards & Kontak', Trophy, AwardsPage],
+    ['kontak', 'Kontak', Phone, KontakPage],
+    ['awards', 'Awards & Sertifikat', Trophy, AwardsPage],
   ] },
 ];
 const NAV_FLAT = NAV.flatMap(g => g.items);
