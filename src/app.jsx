@@ -8,6 +8,7 @@ import { supabase } from './supabaseClient';
 import { toHtml, summaryOf } from './experience.js';
 import { DEFAULT_TOOLS, DEFAULT_STEPS, DEFAULT_CLIENTS, splitTags } from './toolkit.js';
 import { DEFAULT_TEXTS } from './siteTexts.js';
+import { heroForDisplay } from './heroText.js';
 import './styles.css';
 import './ios.css';
 
@@ -211,7 +212,7 @@ function Hero({ onProject, featured, settings }) {
     <motion.div className="hero-title display" aria-hidden="true" style={enabled ? { y: titleY } : {}}><SplitText text={T.hero_title_word} delay={0.1} stagger={0.05} rise={50} rotate={6} blur={10} duration={0.9} shine/></motion.div>
     <motion.div className="hero-portrait" style={enabled ? { y: portraitCombinedY, scale: portraitScale } : {}}>{settings.portrait_url && <img src={settings.portrait_url} alt="Portrait of Azizi" width="1024" height="1536" fetchPriority="high" />}</motion.div>
     <motion.div className="hero-intro" style={enabled ? { y: copyY } : {}} initial={enabled ? { opacity: 0, x: -35 } : false} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.9, delay: 0.35, ease: EASE }}>
-      <SplitText as="p" className="handwriting" text={T.hero_greeting} delay={0.4} stagger={0.035}/><h1 className="display"><SplitText as="span" text={T.hero_name} delay={0.65} stagger={0.045}/><motion.span className="name-dot" initial={enabled ? { opacity: 0, y: 26, rotateZ: 10, filter: 'blur(6px)' } : false} animate={{ opacity: 1, y: 0, rotateZ: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, delay: 0.65 + 5 * 0.045, ease: [0.22, 1, 0.36, 1] }}>.</motion.span></h1><p className="hero-role"><span>{settings.hero_role_line1}</span><span>{settings.hero_role_line2}</span></p><p className="hero-description"><RichText text={settings.hero_description}/></p><div className="hero-skills">{(settings.skills || []).map(t => <span key={t}>{t}</span>)}</div>
+      <SplitText as="p" className="handwriting" text={T.hero_greeting} delay={0.4} stagger={0.035}/><h1 className="display"><SplitText as="span" text={T.hero_name} delay={0.65} stagger={0.045}/><motion.span className="name-dot" initial={enabled ? { opacity: 0, y: 26, rotateZ: 10, filter: 'blur(6px)' } : false} animate={{ opacity: 1, y: 0, rotateZ: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, delay: 0.65 + 5 * 0.045, ease: [0.22, 1, 0.36, 1] }}>.</motion.span></h1><p className="hero-role"><span>{settings.hero_role_line1}</span><span>{settings.hero_role_line2}</span></p><p className="hero-description" dangerouslySetInnerHTML={{ __html: heroForDisplay(settings.hero_description) }}/><div className="hero-skills">{(settings.skills || []).map(t => <span key={t}>{t}</span>)}</div>
       <div className="hero-actions"><Magnetic href="#portfolio" className="primary-link">{T.hero_cta} <ArrowDown size={16}/></Magnetic>{settings.cv_url && <a className="secondary-link" href={settings.cv_url} target="_blank" rel="noopener noreferrer">{T.resume_label}</a>}</div>
       <span className="hero-location"><MapPin size={12} /> {settings.hero_location}</span>
     </motion.div>
@@ -288,14 +289,16 @@ function BrandStrip() {
     </div></Reveal>;
 }
 
+// link brand: hanya http(s) / mailto; tanpa skema otomatis diberi https://
+const safeLink = v => { const u = (v || '').trim(); if (!u) return ''; if (/^(https?:\/\/|mailto:)/i.test(u)) return u; if (/^[a-z][a-z0-9+.-]*:/i.test(u)) return ''; return `https://${u}`; };
 function ClientsStrip({ clients }) {
   const T = useT();
   const enabled = useContext(MotionContext);
-  const CLIENTS = (clients && clients.length ? clients : DEFAULT_CLIENTS).map((c, i) => [c.id || `c${i}`, c.name, c.logo_url, c.dark_chip === 'light']);
+  const CLIENTS = (clients && clients.length ? clients : DEFAULT_CLIENTS).map((c, i) => [c.id || `c${i}`, c.name, c.logo_url, c.dark_chip === 'light', safeLink(c.link_url)]);
   return <section className="clients-section section-wrap" aria-label="Clients">
     <Reveal className="section-heading"><div><span className="eyebrow">{T.clients_eyebrow}</span><WipeReveal as="h2">{T.clients_title}<span className="accent">.</span></WipeReveal></div><span className="clients-count">{CLIENTS.length} {CLIENTS.length === 1 ? 'brand' : 'brands'}</span></Reveal>
-    <ul className="clients-row">{CLIENTS.map(([f, n, src, tl], i) => <motion.li key={f} className={tl ? 'tl' : undefined} style={{ '--d': `${i * 0.7}s` }} {...(enabled ? { initial: { opacity: 0, y: 30, rotate: -3 }, whileInView: { opacity: 1, y: 0, rotate: 0 }, viewport: { once: true, amount: 0.5 }, transition: { type: 'spring', stiffness: 200, damping: 16, delay: i * 0.1 } } : {})}>
-      <span className="client-logo"><img src={src} alt={n} title={n} loading="lazy" height="44"/></span>
+    <ul className="clients-row">{CLIENTS.map(([f, n, src, tl, href], i) => <motion.li key={f} className={tl ? 'tl' : undefined} style={{ '--d': `${i * 0.7}s` }} {...(enabled ? { initial: { opacity: 0, y: 30, rotate: -3 }, whileInView: { opacity: 1, y: 0, rotate: 0 }, viewport: { once: true, amount: 0.5 }, transition: { type: 'spring', stiffness: 200, damping: 16, delay: i * 0.1 } } : {})}>
+      {href ? <a className="client-logo" href={href} target="_blank" rel="noopener noreferrer" aria-label={`${n} (opens in a new tab)`}><img src={src} alt={n} title={n} loading="lazy" height="44"/></a> : <span className="client-logo"><img src={src} alt={n} title={n} loading="lazy" height="44"/></span>}
     </motion.li>)}</ul>
   </section>;
 }

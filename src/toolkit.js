@@ -15,9 +15,9 @@ export const DEFAULT_STEPS = [
 export const splitTags = v => (Array.isArray(v) ? v : String(v || '').split(',')).map(t => t.trim()).filter(Boolean);
 
 export const DEFAULT_CLIENTS = [
-  { name: 'Vizard', logo_url: './Asset/img/clients/vizard.png', dark_chip: '' },
-  { name: 'Agent Opus', logo_url: './Asset/img/clients/agent-opus.png', dark_chip: '' },
-  { name: 'Twizl', logo_url: './Asset/img/clients/twizl.png', dark_chip: '' },
-  { name: 'CIMB Niaga Syariah', logo_url: './Asset/img/clients/cimb-niaga-syariah.png', dark_chip: '' },
-  { name: 'Trends by Masterhooks', logo_url: './Asset/img/clients/trends-masterhooks.png', dark_chip: 'light' },
+  { name: 'Vizard', logo_url: './Asset/img/clients/vizard.png', dark_chip: '', link_url: '' },
+  { name: 'Agent Opus', logo_url: './Asset/img/clients/agent-opus.png', dark_chip: '', link_url: '' },
+  { name: 'Twizl', logo_url: './Asset/img/clients/twizl.png', dark_chip: '', link_url: '' },
+  { name: 'CIMB Niaga Syariah', logo_url: './Asset/img/clients/cimb-niaga-syariah.png', dark_chip: '', link_url: '' },
+  { name: 'Trends by Masterhooks', logo_url: './Asset/img/clients/trends-masterhooks.png', dark_chip: 'light', link_url: '' },
 ];

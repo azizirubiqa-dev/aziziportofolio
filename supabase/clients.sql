@@ -4,6 +4,7 @@ create table if not exists public.clients (
   name text not null,
   logo_url text not null,
   dark_chip text not null default '',
+  link_url text not null default '',
   sort_order int not null default 0,
   created_at timestamptz default now()
 );
@@ -14,3 +15,6 @@ drop policy if exists "public read clients" on public.clients;
 drop policy if exists "admin write clients" on public.clients;
 create policy "public read clients" on public.clients for select using (true);
 create policy "admin write clients" on public.clients for all to authenticated using (true) with check (true);
+
+-- untuk tabel yang sudah ada sebelumnya
+alter table public.clients add column if not exists link_url text not null default '';

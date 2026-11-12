@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { CheckCircle2, AlertTriangle, Film, User, BookOpen, Briefcase, Trophy, LogOut, Plus, Pencil, Trash2, X, Loader2, Search, ChevronDown, Clapperboard, Megaphone, Menu, Upload, FileText, Phone, ChevronUp, Wrench, ListOrdered, Building2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, CheckCircle2, AlertTriangle, Film, User, BookOpen, Briefcase, Trophy, LogOut, Plus, Pencil, Trash2, X, Loader2, Search, ChevronDown, Clapperboard, Megaphone, Menu, Upload, FileText, Phone, ChevronUp, Wrench, ListOrdered, Building2 } from 'lucide-react';
 import { DEFAULT_TOOLS, DEFAULT_STEPS, DEFAULT_CLIENTS } from './toolkit.js';
 import { DEFAULT_TEXTS, TEXT_GROUPS } from './siteTexts.js';
+import { heroToHtml, heroForDisplay, sanitizeHero } from './heroText.js';
 import { supabase } from './supabaseClient';
 import './admin.css';
 import { toHtml, sanitizeHtml } from './experience.js';
@@ -17,31 +18,46 @@ const btnGhost = 'inline-flex items-center gap-2 rounded-lg border border-slate-
 const btnDanger = 'inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition';
 const btnIcon = 'inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200 transition';
 
+// Logo "Z" biru (sama dengan ikon tab situs)
+function ZMark({ size = 44, className = '' }) {
+  return <svg width={size} height={size} viewBox="0 0 64 64" className={className} aria-hidden="true"><defs><linearGradient id="zg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#4da3ff"/><stop offset="1" stopColor="#0a84ff"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(#zg)"/><path d="M18 17h28v7L28 40h19v7H17v-7l18-16H18z" fill="#fff"/></svg>;
+}
+
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [shake, setShake] = useState(0);
   const submit = async e => {
     e.preventDefault();
     setLoading(true); setError('');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) setError(error.message);
+    if (error) { setError(/invalid/i.test(error.message) ? 'Email atau password salah. Coba lagi.' : error.message); setShake(n => n + 1); }
   };
-  return <div className="min-h-screen flex items-center justify-center bg-slate-950 bg-[radial-gradient(circle_at_top,_#1a1012,_#09090b)] px-4">
-    <form onSubmit={submit} className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-8 shadow-2xl">
-      <div className="mb-6 text-center">
-        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-white font-bold text-lg">A</div>
-        <h1 className="text-xl font-bold text-white">AZIZI<span className="text-brand">.</span> Admin</h1>
-        <p className="mt-1 text-xs text-slate-400">Masuk untuk kelola portofolio</p>
+  const field = 'w-full rounded-xl border border-slate-200 bg-white/80 py-3 pl-11 pr-11 text-sm text-slate-800 placeholder:text-slate-400 shadow-sm transition focus:border-brand focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand/15';
+  return <div className="login-bg relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+    <div className="login-orb login-orb-a"/><div className="login-orb login-orb-b"/>
+    <form key={shake} onSubmit={submit} className={`relative w-full max-w-[400px] rounded-[28px] border border-white/70 bg-white/75 p-8 shadow-[0_40px_90px_-40px_rgba(20,60,160,.45)] backdrop-blur-xl ${shake ? 'login-shake' : 'login-rise'}`}>
+      <div className="mb-7 text-center">
+        <ZMark size={56} className="mx-auto mb-4 drop-shadow-[0_12px_20px_rgba(10,132,255,.35)]"/>
+        <h1 className="text-[22px] font-extrabold tracking-tight text-slate-900">AZIZI<span className="text-brand">.</span> Admin</h1>
+        <p className="mt-1 text-sm text-slate-500">Masuk untuk mengelola portofolio</p>
       </div>
       <div className="flex flex-col gap-4">
-        <label className={label}><span className="text-slate-300">Email</span><input className={input} type="email" value={email} onChange={e => setEmail(e.target.value)} required autoFocus/></label>
-        <label className={label}><span className="text-slate-300">Password</span><input className={input} type="password" value={password} onChange={e => setPassword(e.target.value)} required/></label>
-        {error && <p className="text-sm text-rose-400">{error}</p>}
-        <button type="submit" disabled={loading} className={`${btnPrimary} justify-center`}>{loading && <Loader2 size={15} className="animate-spin"/>}{loading ? 'Masuk…' : 'Masuk'}</button>
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-slate-500">Email
+          <span className="relative block"><Mail size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/><input className={field} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nama@email.com" autoComplete="username" required autoFocus/></span>
+        </label>
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-slate-500">Password
+          <span className="relative block"><Lock size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/><input className={field} type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Masukkan password" autoComplete="current-password" required/>
+            <button type="button" onClick={() => setShow(v => !v)} aria-label={show ? 'Sembunyikan password' : 'Tampilkan password'} aria-pressed={show} className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-brand">{show ? <EyeOff size={18}/> : <Eye size={18}/>}</button></span>
+        </label>
+        {error && <p role="alert" className="flex items-start gap-2 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-600"><AlertTriangle size={16} className="mt-0.5 flex-shrink-0"/>{error}</p>}
+        <button type="submit" disabled={loading} className="mt-1 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0a84ff] to-[#5e5ce6] text-sm font-bold text-white shadow-[0_14px_28px_-12px_rgba(10,100,255,.7)] transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60">{loading && <Loader2 size={16} className="animate-spin"/>}{loading ? 'Masuk…' : 'Masuk'}</button>
       </div>
+      <a href="./index.html" className="mt-6 flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-brand"><ArrowLeft size={14}/>Kembali ke situs</a>
     </form>
   </div>;
 }
@@ -172,7 +188,7 @@ function ProfilPage() {
     <div className={`${card} grid grid-cols-1 sm:grid-cols-2 gap-5`}>
       <label className={label}>Role baris 1<input className={input} value={form.hero_role_line1 || ''} onChange={e => set('hero_role_line1', e.target.value)}/></label>
       <label className={label}>Role baris 2<input className={input} value={form.hero_role_line2 || ''} onChange={e => set('hero_role_line2', e.target.value)}/></label>
-      <label className={`${label} sm:col-span-2`}>Deskripsi Hero<textarea className={input} rows="2" value={form.hero_description || ''} onChange={e => set('hero_description', e.target.value)}/></label>
+      <HeroEditor value={form.hero_description} onChange={v => set('hero_description', v)}/>
       <label className={label}>Lokasi<input className={input} value={form.hero_location || ''} onChange={e => set('hero_location', e.target.value)}/></label>
       <UploadField label="Foto Portrait (Hero)" value={form.portrait_url} onChange={v => set('portrait_url', v)} accept="image/*" placeholder="Upload foto baru" wide/>
       <UploadField label="CV" value={form.cv_url} onChange={v => set('cv_url', v)} accept="application/pdf" placeholder="Upload file PDF, atau paste link Google Drive" wide/>
@@ -330,6 +346,79 @@ function ListCRUD({ table, title, fields, renderSummary, renderMeta, renderThumb
         </div>
       </div>)}
     </div>)}
+  </div>;
+}
+
+// Editor deskripsi hero: tebal, miring, garis bawah, warna teks, sorot (semua warna)
+const PALETTE = ['#0a84ff', '#0a6bff', '#5e5ce6', '#af52de', '#ff2d55', '#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#30b0c7', '#0f172a', '#64748b', '#ffffff'];
+function ColorMenu({ label: lbl, icon, onPick, onSave }) {
+  const [open, setOpen] = useState(false);
+  const [custom, setCustom] = useState('#0a84ff');
+  const box = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const off = e => { if (box.current && !box.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', off); return () => document.removeEventListener('mousedown', off);
+  }, [open]);
+  const pick = c => { onPick(c); setOpen(false); };
+  return <div className="relative" ref={box}>
+    <button type="button" className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-200" onMouseDown={e => { e.preventDefault(); onSave(); }} onClick={() => setOpen(v => !v)} aria-expanded={open}>{icon}{lbl}<ChevronDown size={12}/></button>
+    {open && <div className="absolute left-0 top-9 z-30 w-56 rounded-xl border border-slate-200 bg-white p-3 shadow-xl" onMouseDown={e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); }}>
+      <div className="grid grid-cols-7 gap-1.5">{PALETTE.map(c => <button key={c} type="button" title={c} onClick={() => pick(c)} className="h-6 w-6 rounded-full border border-slate-200 transition hover:scale-110" style={{ background: c }}/>)}</div>
+      <label className="mt-3 flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-500">Warna bebas
+        <span className="flex items-center gap-2"><input type="color" value={custom} onChange={e => setCustom(e.target.value)} className="h-7 w-9 cursor-pointer rounded border border-slate-200 bg-white p-0.5"/><button type="button" onClick={() => pick(custom)} className="rounded-md bg-brand px-2.5 py-1 text-[11px] font-bold text-white">Pakai</button></span>
+      </label>
+    </div>}
+  </div>;
+}
+
+function HeroEditor({ value, onChange }) {
+  const ref = useRef(null);
+  const saved = useRef(null);
+  const [html, setHtml] = useState(() => heroToHtml(value));
+  useEffect(() => { if (ref.current) ref.current.innerHTML = heroToHtml(value); }, []);
+  const emit = () => { const h = sanitizeHero(ref.current.innerHTML); setHtml(h); onChange(h); };
+  const sel = () => { const s = window.getSelection(); return s && s.rangeCount && ref.current.contains(s.anchorNode) ? s : null; };
+  const remember = () => { const s = sel(); if (s) saved.current = s.getRangeAt(0).cloneRange(); };
+  const restore = () => { ref.current.focus(); if (saved.current) { const s = window.getSelection(); s.removeAllRanges(); s.addRange(saved.current); } };
+  const needSelection = () => { const s = sel(); if (!s || s.getRangeAt(0).collapsed) { notify('error', 'Blok tulisannya dulu', 'Seret kursor untuk memilih kata yang ingin diubah, lalu klik tombolnya.'); return false; } return true; };
+  const cmd = (name, arg) => { restore(); document.execCommand('styleWithCSS', false, true); document.execCommand(name, false, arg); emit(); remember(); };
+  const colorCmd = (name, c) => { restore(); if (!needSelection()) return; cmd(name, c); };
+  const markAncestor = n => { while (n && n !== ref.current) { if (n.nodeName === 'MARK') return n; n = n.parentNode; } return null; };
+  const highlight = () => {
+    restore(); const s = sel(); if (!s) return;
+    const m = markAncestor(s.anchorNode);
+    if (m) { m.replaceWith(...m.childNodes); emit(); return; }
+    if (!needSelection()) return;
+    const r = s.getRangeAt(0); const mk = document.createElement('mark'); mk.appendChild(r.extractContents()); r.insertNode(mk); s.removeAllRanges(); emit();
+  };
+  const clear = () => { restore(); document.execCommand('removeFormat'); ref.current.querySelectorAll('mark').forEach(m => m.replaceWith(...m.childNodes)); ref.current.querySelectorAll('strong,b,em,i,u,span,font').forEach(m => m.replaceWith(...m.childNodes)); emit(); };
+  const tool = 'inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-200 transition';
+  const pre = e => e.preventDefault();
+  return <div className={`${label} sm:col-span-2`}>
+    <span>Deskripsi Hero</span>
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
+      <div className="flex flex-wrap items-center gap-1 rounded-t-lg border-b border-slate-200 bg-slate-50 px-2 py-1.5">
+        <button type="button" className={tool} onMouseDown={pre} onClick={() => cmd('bold')} title="Tebal"><b>B</b></button>
+        <button type="button" className={tool} onMouseDown={pre} onClick={() => cmd('italic')} title="Miring"><i>I</i></button>
+        <button type="button" className={tool} onMouseDown={pre} onClick={() => cmd('underline')} title="Garis bawah"><u>U</u></button>
+        <span className="mx-1 h-5 w-px bg-slate-200"/>
+        <ColorMenu label="Warna teks" icon={<span className="font-extrabold text-brand underline decoration-2">A</span>} onSave={remember} onPick={c => colorCmd('foreColor', c)}/>
+        <ColorMenu label="Warna sorot" icon={<span className="rounded bg-amber-200 px-1 font-bold text-slate-700">A</span>} onSave={remember} onPick={c => colorCmd('hiliteColor', c)}/>
+        <button type="button" className={tool} onMouseDown={pre} onClick={highlight} title="Sorot biru bawaan (biru tebal)"><span className="rounded bg-brand/15 px-1.5 font-bold text-brand">Aa</span> Sorot biru</button>
+        <span className="mx-1 h-5 w-px bg-slate-200"/>
+        <button type="button" className={tool} onMouseDown={pre} onClick={clear}>Bersihkan</button>
+      </div>
+      <div ref={ref} className="hero-editor" contentEditable suppressContentEditableWarning spellCheck={false}
+        onInput={emit} onBlur={() => { remember(); emit(); }} onMouseUp={remember} onKeyUp={remember}
+        onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
+        onPaste={e => { e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain').replace(/\s+/g, ' ')); }}/>
+    </div>
+    <span className="text-xs font-normal text-slate-400">Blok kata di dalam kotak, lalu pilih: <b>B</b> tebal, <i>I</i> miring, <u>U</u> garis bawah, <b>Warna teks</b>, <b>Warna sorot</b> (latar warna apa saja, atau “Warna bebas” untuk semua warna), atau <b>Sorot biru</b> bawaan. Klik <b>Bersihkan</b> untuk menghapus semua format.</span>
+    <div className="mt-1 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3">
+      <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Pratinjau di situs</p>
+      <p className="hero-preview text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: heroForDisplay(html) }}/>
+    </div>
   </div>;
 }
 
@@ -611,12 +700,13 @@ function BrandPage() {
       fields={[
         { key: 'name', label: 'Nama brand', required: true, hint: 'Dipakai sebagai teks alternatif dan tooltip logo.' },
         { key: 'dark_chip', label: 'Logo transparan (tanpa kotak warna)?', type: 'select', options: [['', 'Tidak, logo punya kotak/latar sendiri'], ['light', 'Ya, beri latar terang di mode gelap']], hint: 'Pilih “Ya” untuk logo PNG transparan berwarna gelap agar tetap terbaca di mode gelap.' },
+        { key: 'link_url', label: 'Link tujuan saat logo diklik (opsional)', wide: true, hint: 'Boleh link apa saja: Instagram, YouTube, Google Drive, website, atau email (mailto:). Kosongkan kalau logo tidak perlu bisa diklik.' },
         { key: 'logo_url', label: 'Logo (PNG/SVG, tinggi seragam lebih bagus)', type: 'upload', required: true, wide: true },
       ]}
-      emptyItem={{ name: '', logo_url: '', dark_chip: '' }}
+      emptyItem={{ name: '', logo_url: '', dark_chip: '', link_url: '' }}
       renderThumb={b => <img src={b.logo_url} alt="" className="h-11 w-20 flex-shrink-0 rounded-lg border border-slate-200 bg-slate-50 object-contain p-1"/>}
       renderSummary={b => b.name}
-      renderMeta={() => 'Gunakan tombol ↑ ↓ untuk mengatur urutan'}/>
+      renderMeta={b => b.link_url ? `Link: ${b.link_url}` : 'Tanpa link · gunakan tombol ↑ ↓ untuk mengatur urutan'}/>
   </div>;
 }
 
@@ -901,7 +991,7 @@ function Dashboard({ session }) {
     <aside className={`flex flex-shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white py-5 transition-all duration-300 ${sidebarOpen ? 'w-64 px-4' : 'w-[68px] px-2'}`}>
       <div className={`flex flex-col flex-1 min-h-0 ${sidebarOpen ? 'w-56' : 'w-[52px]'}`}>
         <button className={`mb-6 flex items-center gap-2.5 rounded-xl py-1.5 hover:bg-slate-50 transition whitespace-nowrap ${sidebarOpen ? 'px-2' : 'justify-center px-0'}`}>
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand text-sm font-bold text-white">A</div>
+          <ZMark size={36} className="flex-shrink-0"/>
           {sidebarOpen && <><div className="text-left"><p className="text-sm font-bold text-slate-900 leading-tight">AZIZI<span className="text-brand">.</span></p><p className="text-[11px] text-slate-400 leading-tight">Portfolio Admin</p></div>
           <ChevronDown size={14} className="ml-auto text-slate-400"/></>}
         </button>
